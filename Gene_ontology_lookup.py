@@ -7,6 +7,8 @@ from sets import Set
 # *Always* tell NCBI who you are
 Entrez.email = "your_email@whatever"
 
+#get_gene takes a list of gene names as symbols (set for mouse here) and returns a list of gene IDs
+#that NCBI can use 
 def get_gene(gene_list):
   gene_id_list = []
   for g_term in gene_list:
@@ -16,6 +18,8 @@ def get_gene(gene_list):
     gene_id_list.append(gene_id[0])
   return gene_id_list
 
+#retrieve_annotation takes a list of gene IDs and returns all of the associated 
+#Gene Ontology terms as a dictionary
 def retrieve_annotation(id_list):
   goterms = {}
   handle = Entrez.efetch(db='gene', id=",".join(id_list), retype='gb', retmode='xml')
