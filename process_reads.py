@@ -52,4 +52,4 @@ def tophat_and_cuff(path, out= './'):
         cuff_to_call = 'cufflinks -p 4 -G '+annotation_file' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         call(cuff_to_call, shell=True)
 
-get_files('./', out = '/Users/idriver/RockLab-files/test')
+tophat_and_cuff('./', out = '/Users/idriver/RockLab-files/test')
