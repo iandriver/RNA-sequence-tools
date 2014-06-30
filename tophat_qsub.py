@@ -45,7 +45,7 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
   import subprocess
   print "> " + command
   process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-  out = process.stdout.readline()
+  out, err = process.communicate()
   print(out)
 
   # Match job id
@@ -143,6 +143,6 @@ for p in pathlist:
     # Write jobid to a file.
     import subprocess
     process = subprocess.Popen('echo %d > jobids' % jobid, stdout=subprocess.PIPE, shell = True)
-    out, err = process.stdout.readline()
+    out, err = process.communicate()
     print(out)
     break
