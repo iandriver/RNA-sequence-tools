@@ -21,7 +21,8 @@ def load_pickle(p_name='gene_annotation.p'):
   return data
 
 def get_gene(gene_list):
-  gene_id_list = []
+  new_gene_id_list = []
+  arch_gene_id = []
   archive = load_pickle(p_name='gene_list.p')
   for g_term in gene_list:
     if g_term not in archive:
@@ -30,9 +31,11 @@ def get_gene(gene_list):
       g_record = Entrez.read(g_handle)
       gene_id = g_record["IdList"]
       if len(gene_id)>0:
-       gene_id_list.append(gene_id[0])
+       new_gene_id_list.append(gene_id[0])
+    else:
+      arch_gene_id.append(archive[g_term])
   make_pickle(archive, p_name='gene_list.p')
-  return gene_id_list
+  return new_gene_id_list, arch_gene_id
 
 def flatten(d, parent_key=''):
   items = []
@@ -45,8 +48,9 @@ def flatten(d, parent_key=''):
   return dict(items)
 
 def retrieve_annotation(id_list):
+  new_genes, archived_genes = get_gene(gene_list)
   goterms = {}
-  handle = Entrez.efetch(db='gene', id=",".join(id_list), retype='gb', retmode='xml')
+  handle = Entrez.efetch(db='gene', id=",".join(new_genes), retype='gb', retmode='xml')
   all_records = Entrez.parse(handle, 'genebank')
   for record in all_records:
     for rec in record['Entrezgene_properties']:
