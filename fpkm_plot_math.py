@@ -22,6 +22,7 @@ gene_list = pickle.load(fpgenelist)
 
 print cell_list, len(gene_list)
 
+
 def fcluster( pts, ncluster, method="average", criterion="maxclust" ):
     """ -> (pts, Y pdist, Z linkage, T fcluster, clusterlists)
         ncluster = n1 + n2 + ... (including n1 singletons)
@@ -37,7 +38,7 @@ def fcluster( pts, ncluster, method="average", criterion="maxclust" ):
 # Compute and plot dendrogram.
 fig = pl.figure()
 axdendro = fig.add_axes([0.09,0.1,0.2,0.8])
-Y = sch.linkage(by_cell, method='centroid')
+Y = sch.linkage(by_gene, method='centroid')
 Z = sch.dendrogram(Y, orientation='right')
 axdendro.set_xticks([])
 axdendro.set_yticks([])
@@ -45,9 +46,9 @@ axdendro.set_yticks([])
 # Plot distance matrix.
 axmatrix = fig.add_axes([0.3,0.1,0.6,0.8])
 index = Z['leaves']
-by_cell = by_cell[index,:]
-by_cell = by_cell[:,index]
-im = axmatrix.matshow(by_cell, aspect='auto', origin='lower')
+by_cell = by_gene[index,:]
+by_cell = by_gene[:,index]
+im = axmatrix.matshow(by_gene, aspect='auto', origin='lower')
 axmatrix.set_xticks([])
 axmatrix.set_yticks([])
 

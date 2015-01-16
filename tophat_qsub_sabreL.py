@@ -55,24 +55,24 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/netapp/home/idriver/10242014_macs'
+path = '/netapp/home/idriver/Lung_sabre'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/Ensembl_GRCm38/genes.gtf'
-index_gen_loc = '/netapp/home/idriver/Ensembl_GRCm38/Bowtie2Index/genome'
+annotation_file = '/netapp/home/idriver/Mus_musculus_UCSC_mm10/Mus_musculus/UCSC/mm10/Annotation/Archives/archive-2014-05-23-16-05-10/Genes/genes.gtf'
+index_gen_loc = '/netapp/home/idriver/Mus_musculus_UCSC_mm10/Mus_musculus/UCSC/mm10/Sequence/Bowtie2Index/genome'
 
 pathlist = []
 for root, dirs, files in os.walk(path):
-  if 'fastq' in root:
+  if 'Sample_Lung' in root:
     pathlist.append([root,files])
 for p in pathlist:
   n = p[0].strip('/').split('_')
-  name = n[1].split('/')[-1]
+  name = n[-1]
   data_file = p[0]
   result_file = os.path.join(out,name)
   input_files=''
   r_num = []
   for f in p[1]:
-    if 'fastq' in f and 'qz' not in f:
+    if 'fastq' in f and 'qz' not in f and ".txt" not in f:
       f_split = f.split('_')
       r_name = (f_split[3][1])
       en_split = f_split[4].split('.')
@@ -95,9 +95,8 @@ for p in pathlist:
     final_files = name_build.strip(',')
   elif len(in_split) == 2:
     final_files = sort_num[0]+' '+sort_num[1].strip(',')
-  cell_number = int(name.strip('C'))
-  tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_ensembl/known_e -o '+result_file+' '+index_gen_loc+' '+final_files
-  samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
+  cell_number = int(name.split('-')[-1])
+  tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10/known -o '+result_file+' '+index_gen_loc+' '+final_files
   cufflinks_cmd = 'cufflinks -p 8 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
   cuffquant_cmd = 'cuffquant -p 8 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
   # Write script.
@@ -105,8 +104,8 @@ for p in pathlist:
 #!/bin/sh
 #$ -l arch=linux-x64
 #$ -S /bin/bash
-#$ -o /netapp/home/idriver/results_macspnx_ensembl
-#$ -e /netapp/home/idriver/error_spc
+#$ -o /netapp/home/idriver/results_Lung_sabre_mm10
+#$ -e /netapp/home/idriver/error_pdgfra
 #$ -cwd
 #$ -r y
 #$ -j y
@@ -132,7 +131,7 @@ export TMPDIR=/scratch
 echo $TMPDIR
 cd $TMPDIR
 mkdir %(name)s
-mkdir -p /netapp/home/idriver/results_macspnx_ensembl/%(name)s
+mkdir -p /netapp/home/idriver/results_Lung_sabre_mm10/%(name)s
 
 %(tophat_cmd)s
 %(cufflinks_cmd)s
@@ -140,18 +139,18 @@ mkdir -p /netapp/home/idriver/results_macspnx_ensembl/%(name)s
 
 # Copy the results back to the project directory:
 cd $TMPDIR
-cp -r %(name)s/* /netapp/home/idriver/results_macspnx_ensembl/%(name)s
+cp -r %(name)s/* /netapp/home/idriver/results_Lung_sabre_mm10/%(name)s
 rm -r %(name)s
 
 date
   """ % vars()
-  if cell_number != 10 :
-    filename = 'C%d_macs.sh' % cell_number
+  if cell_number != 10:
+    filename = 'Lung_Sample-C%d.sh' % cell_number
     write_file(filename, contents)
     print tophat_cmd
     print cufflinks_cmd
     print cuffquant_cmd
-    jobid = qsub_submit(filename, name = 'C%d_macs' % cell_number)
+    jobid = qsub_submit(filename, name = 'Lung_Sample_C%d' % cell_number)
     print "Submitted. jobid = %d" % jobid
     # Write jobid to a file.
     import subprocess

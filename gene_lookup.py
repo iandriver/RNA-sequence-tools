@@ -20,20 +20,84 @@ def load_pickle(p_name='gene_annotation.p'):
     data = pickle.load(fp)
   return data
 
+def chop_genelist(path='/Users/idriver/RockLab-files/test'):
+  g = 0
+  for root, dirnames, filenames in os.walk(path):
+    for filename in fnmatch.filter(filenames, '*.fpkm_tracking'):
+      if '_genes' in filename:
+        curr_cell_fpkm_g =[]
+        curr_g_file = open(os.path.join(root, filename))
+        g_cell_name = (root.split('/')[-1])
+        if g == 0:
+          curr_cell_genes = []
+        for k, line in enumerate(curr_g_file):
+          if k == 0:
+            header = line.strip('\n').split('\t')
+          if k > 0:
+            curr_g_line = line.strip('\n').split('\t')
+            #exclude RNA spike controls
+            if g == 0 and curr_g_line[3][:4] != 'ERCC':
+              curr_cell_genes.append(curr_g_line[0])
+        g = 1
+        break
+  sp_gene_list = []
+  x_last =0
+  for x in range(999, len(curr_cell_genes), 999):
+    sp_gene_list.append(curr_cell_genes[x_last:x])
+    x_last = x
+  return sp_gene_list
+
+def file_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgfra-ly6a-dcn-group.txt'):
+  gene_df = pd.read_csv(path+file, delimiter= '\t')
+  gene_list = gene_df['GeneID'].tolist()
+  final_list = []
+  for g in gene_list:
+    final_list.append(g.split('_')[0])
+  return final_list
+
+def print_annotation(ann_list, gene_name, sub_part='all'):
+  for s in ann_list.items():
+    if s[0] in gene_name:
+      print s[0]
+      for s2 in s[1]:
+        if sub_part=='all':
+          print s2
+          for k, v in s2.items():
+            if sub_part==k:
+              print k, v
+
+def fetch_arch_genes(arch_list, arch):
+  c= 0
+  for ar_item in arch.items():
+    if ar_item[0] in arch_list and c == 0:
+      arch_dict = ar_item
+      c+=1
+    elif ar_item[0] in arch_list and c != 0:
+      arch_dict[ar_item[0]]= ar_item[1:]
+
+def get_p_gene(ann_list):
+  genes = []
+  for s in ann_list.items():
+    genes.append(s[0])
+
 def get_gene(gene_list):
   new_gene_id_list = []
   arch_gene_id = []
-  archive = load_pickle(p_name='gene_list.p')
+  if os.path.isfile(arch_dict_path):
+    archive_list = open(arch_dict_path, 'rb')
+    arch_go = pickle.load(arch_dict)
+  else:
+      archive = []
   for g_term in gene_list:
     if g_term not in archive:
       archive.append(g_term)
-      g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+g_term+'[sym]')
+      g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+str(g_term)+'[sym]')
       g_record = Entrez.read(g_handle)
       gene_id = g_record["IdList"]
       if len(gene_id)>0:
        new_gene_id_list.append(gene_id[0])
     else:
-      arch_gene_id.append(archive[g_term])
+      arch_gene_id.append(g_term)
   make_pickle(archive, p_name='gene_list.p')
   return new_gene_id_list, arch_gene_id
 
@@ -47,9 +111,14 @@ def flatten(d, parent_key=''):
       items.append((new_key, v))
   return dict(items)
 
-def retrieve_annotation(id_list):
+def retrieve_annotation(gene_list, arch_dict_path="/Users/idriver/RockLab-files/arch_go.p"):
   new_genes, archived_genes = get_gene(gene_list)
-  goterms = {}
+  if os.path.isfile(arch_dict_path):
+      arch_dict = open(arch_dict_path, 'rb')
+      arch_go = pickle.load(arch_dict)
+  else:
+      arch_go = {}
+  goterms = {} 
   handle = Entrez.efetch(db='gene', id=",".join(new_genes), retype='gb', retmode='xml')
   all_records = Entrez.parse(handle, 'genebank')
   for record in all_records:
@@ -96,63 +165,12 @@ def retrieve_annotation(id_list):
   #this function returns a dictionary of gene names each with a list of dicts
   #with GO terms by type example {gene1: [{Function_type1: [GOterm1, GOterm2]},
   # {Function_type2: [GOterm3, GOterm4]}]}
-  return goterms
+  merge_goterms = dict(arch_go.items()+ goterms.items())
+  with open(arch_dict_path+'arch_go.p', 'wb') as fp1:
+    pickle.dump(merge_goterms, fp1)
+  return "goterms upadated, length: "+str(len(merge_goterms))+" at "+arch_dict_path+'arch_go.p'
 
-
-def chop_genelist(path='/Users/idriver/RockLab-files/test'):
-  g = 0
-  for root, dirnames, filenames in os.walk(path):
-    for filename in fnmatch.filter(filenames, '*.fpkm_tracking'):
-      if '_genes' in filename:
-        curr_cell_fpkm_g =[]
-        curr_g_file = open(os.path.join(root, filename))
-        g_cell_name = (root.split('/')[-1])
-        if g == 0:
-          curr_cell_genes = []
-        for k, line in enumerate(curr_g_file):
-          if k == 0:
-            header = line.strip('\n').split('\t')
-          if k > 0:
-            curr_g_line = line.strip('\n').split('\t')
-            #exclude RNA spike controls
-            if g == 0 and curr_g_line[3][:4] != 'ERCC':
-              curr_cell_genes.append(curr_g_line[0])
-        g = 1
-        break
-  sp_gene_list = []
-  x_last =0
-  for x in range(999, len(curr_cell_genes), 999):
-    sp_gene_list.append(curr_cell_genes[x_last:x])
-    x_last = x
-  return sp_gene_list
-
-
-
-def file_gene_list(path='/Users/idriver/RockLab-files/spc_ensembl/'):
-  file = 'new-spc-highPC1-2.txt'
-  gene_df = pd.read_csv(path+file, delimiter= '\t')
-  gene_list = gene_df['GeneID'].tolist()
-  final_list = []
-  for g in gene_list:
-    final_list.append(g.split('_')[0])
-  return final_list
-
-def print_annotation(ann_list, gene_name, sub_part='all'):
-  for s in ann_list.items():
-    if s[0] in gene_name:
-      print s[0]
-      for s2 in s[1]:
-        if sub_part=='all':
-          print s2
-        for k, v in s2.items():
-          if sub_part=k:
-            print k, v
-
-def get_p_gene(ann_list):
-  genes = []
-  for s in ann_list.items():
-    genes.append(s[0])
 
 gene_list = file_gene_list()
 answer = retrieve_annotation(get_gene(gene_list))
-get_annotation(answer,gene_list)
+print_annotation(answer, gene_list)

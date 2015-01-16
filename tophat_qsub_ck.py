@@ -55,24 +55,24 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/netapp/home/idriver/10242014_macs'
+path = '/netapp/home/idriver/12222014'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/Ensembl_GRCm38/genes.gtf'
-index_gen_loc = '/netapp/home/idriver/Ensembl_GRCm38/Bowtie2Index/genome'
+annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
+index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'
 
 pathlist = []
 for root, dirs, files in os.walk(path):
   if 'fastq' in root:
     pathlist.append([root,files])
 for p in pathlist:
-  n = p[0].strip('/').split('_')
-  name = n[1].split('/')[-1]
+  n = p[0].strip('/').split('/')
+  namef = n[-1].split('_')[0]
   data_file = p[0]
-  result_file = os.path.join(out,name)
+  result_file = os.path.join(out,namef)
   input_files=''
   r_num = []
   for f in p[1]:
-    if 'fastq' in f and 'qz' not in f:
+    if 'fastq' in f:
       f_split = f.split('_')
       r_name = (f_split[3][1])
       en_split = f_split[4].split('.')
@@ -95,8 +95,7 @@ for p in pathlist:
     final_files = name_build.strip(',')
   elif len(in_split) == 2:
     final_files = sort_num[0]+' '+sort_num[1].strip(',')
-  cell_number = int(name.strip('C'))
-  tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_ensembl/known_e -o '+result_file+' '+index_gen_loc+' '+final_files
+  tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10/known -o '+result_file+' '+index_gen_loc+' '+final_files
   samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
   cufflinks_cmd = 'cufflinks -p 8 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
   cuffquant_cmd = 'cuffquant -p 8 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -105,15 +104,15 @@ for p in pathlist:
 #!/bin/sh
 #$ -l arch=linux-x64
 #$ -S /bin/bash
-#$ -o /netapp/home/idriver/results_macspnx_ensembl
+#$ -o /netapp/home/idriver/results_cindy_rna
 #$ -e /netapp/home/idriver/error_spc
 #$ -cwd
 #$ -r y
 #$ -j y
-#$ -l netapp=10G,scratch=40G,mem_total=22G
+#$ -l netapp=20G,scratch=80G,mem_total=24G
 #$ -pe smp 8
 #$ -R yes
-#$ -l h_rt=3:59:00
+#$ -l h_rt=9:59:00
 
 set echo on
 
@@ -126,13 +125,14 @@ PATH=$PATH:/netapp/home/idriver/cufflinks-2.2.1.Linux_x86_64
 PATH=$PATH:/netapp/home/idriver/bin/bowtie2-2.2.3
 PATH=$PATH:/netapp/home/idriver/bin/samtools-0.1.19_2
 PATH=$PATH:/netapp/home/idriver/bin/tophat-2.0.13.Linux_x86_64
+PATH=$PATH:/usr/bin/gunzip
 export PATH
 echo $PATH
 export TMPDIR=/scratch
 echo $TMPDIR
 cd $TMPDIR
-mkdir %(name)s
-mkdir -p /netapp/home/idriver/results_macspnx_ensembl/%(name)s
+mkdir %(namef)s
+mkdir -p /netapp/home/idriver/results_cindy_rna/%(namef)s
 
 %(tophat_cmd)s
 %(cufflinks_cmd)s
@@ -140,18 +140,18 @@ mkdir -p /netapp/home/idriver/results_macspnx_ensembl/%(name)s
 
 # Copy the results back to the project directory:
 cd $TMPDIR
-cp -r %(name)s/* /netapp/home/idriver/results_macspnx_ensembl/%(name)s
-rm -r %(name)s
+cp -r %(namef)s/* /netapp/home/idriver/results_cindy_rna/%(namef)s
+rm -r %(namef)s
 
 date
   """ % vars()
-  if cell_number != 10 :
-    filename = 'C%d_macs.sh' % cell_number
+  if namef == 'D7-E3' or namef == 'D7-E2' :
+    filename = '%s_cindy.sh' % namef
     write_file(filename, contents)
     print tophat_cmd
     print cufflinks_cmd
     print cuffquant_cmd
-    jobid = qsub_submit(filename, name = 'C%d_macs' % cell_number)
+    jobid = qsub_submit(filename, name = '%s_cindy' % namef)
     print "Submitted. jobid = %d" % jobid
     # Write jobid to a file.
     import subprocess
