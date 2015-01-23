@@ -9,4 +9,4 @@ FPKM parsing contains scripts for turning multiple tophat/cufflinks output files
 
 RNA Seq analysis contains scripts for clustering and pca analysis of RNA-seq data
 
-Gene Ontology contains files for fetching and organizing Entrez Gene ontology information from list's of genes
+Gene Ontology contains files for fetching and organizing Entrez Gene ontology information from lists of genes
