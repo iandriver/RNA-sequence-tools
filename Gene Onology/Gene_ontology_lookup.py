@@ -4,11 +4,15 @@ import sys
 from Bio import Entrez
 from sets import Set
 
+#Basic script for fetching gene ontology from Entrez
+#Starting with common gene names in a list 1) get_gene takes the list and returns gene ids that are suitable
+#for Entrez. 2) retrieve_annotation takes a gene id list and returns the gene ontology in a dict of dicts
+
 # *Always* tell NCBI who you are
 Entrez.email = "your_email@whatever"
 
 #get_gene takes a list of gene names as symbols (set for mouse here) and returns a list of gene IDs
-#that NCBI can use 
+#that NCBI can use
 def get_gene(gene_list):
   gene_id_list = []
   for g_term in gene_list:
@@ -18,7 +22,7 @@ def get_gene(gene_list):
     gene_id_list.append(gene_id[0])
   return gene_id_list
 
-#retrieve_annotation takes a list of gene IDs and returns all of the associated 
+#retrieve_annotation takes a list of gene IDs and returns all of the associated
 #Gene Ontology terms as a dictionary
 def retrieve_annotation(id_list):
   goterms = {}
@@ -59,7 +63,7 @@ def retrieve_annotation(id_list):
                         for i7, k7 in k6.items():
                           if i7 == 'Other-source_anchor':
                             gotype[gotype_name].append(k7)
-            #reduce the Go terms to a set to remove dublicate entries                
+            #reduce the Go terms to a set to remove dublicate entries
             set_type = list(Set(gotype[gotype_name]))
             gotype[gotype_name]= set_type
             #only add the gotype once
