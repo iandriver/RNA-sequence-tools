@@ -2,10 +2,19 @@ import fnmatch
 import os
 import pandas as pd
 import cPickle as pickle
+from scipy import stats
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 path = '/Volumes/Seq_data/results_av_01272015'
 align_dict={}
 cell_list =[]
+align_dict['input_L_num'] = []
+align_dict['mapped_L_num'] = []
+align_dict['input_R_num'] = []
+align_dict['mapped_R_num'] = []
+align_dict['per_mapped'] = []
 for root, dirnames, filenames in os.walk(path):
   for filename in fnmatch.filter(filenames, 'align_summary.txt'):
     cell_name = root.split('/')[-1]
@@ -29,10 +38,18 @@ for root, dirnames, filenames in os.walk(path):
         if "overall read mapping rate." in l:
             per_mapped = float(l.split('%')[0])
 
-    align_dict[cell_name] = [input_L_num, mapped_L_num, input_R_num, mapped_R_num, per_mapped]
+    align_dict['input_L_num'].append(input_L_num)
+    align_dict['mapped_L_num'].append(mapped_L_num)
+    align_dict['input_R_num'].append(input_R_num)
+    align_dict['mapped_R_num'].append(mapped_R_num)
+    align_dict['per_mapped'].append(per_mapped)
     f.close()
-align_df = pd.DataFrame(align_dict, index = ['input_L_num', 'mapped_L_num', 'input_R_num', 'mapped_R_num', 'per_mapped'])
+align_df = pd.DataFrame(align_dict, index = cell_list)
 align_df.to_csv(os.path.join(path,'results_av_01272015_align.txt'), sep = '\t')
+
+sns.set_palette("deep", desat=.6)
+plt.hist(align_df['mapped_L_num'], 250000)
+plt.show()
 
 with open(os.path.join(path,'results_av_01272015_align.p'), 'wb') as fp:
   pickle.dump(align_df, fp)

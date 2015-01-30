@@ -3,7 +3,7 @@ import fnmatch
 import sys, csv ,operator
 
 
-for root, dirnames, filenames in os.walk('/Volumes/Seq_data/results_cindy_rna'):
+for root, dirnames, filenames in os.walk('/Volumes/Seq_data/results_av_01272015'):
   for filename in fnmatch.filter(filenames, '*.fpkm_tracking'):
     if filename =='genes.fpkm_tracking':
       data = csv.reader(open(os.path.join(root, filename), 'rU'),delimiter='\t')
