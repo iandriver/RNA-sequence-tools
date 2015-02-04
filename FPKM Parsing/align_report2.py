@@ -5,9 +5,8 @@ import cPickle as pickle
 from scipy import stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import seaborn as sns
 
-path = '/Volumes/Seq_data/results_av_01272015'
+path = '/Volumes/Seq_data/results_av_01272015_hu'
 align_dict={}
 cell_list =[]
 align_dict['input_L_num'] = []
@@ -47,8 +46,7 @@ for root, dirnames, filenames in os.walk(path):
 align_df = pd.DataFrame(align_dict, index = cell_list)
 align_df.to_csv(os.path.join(path,'results_av_01272015_align.txt'), sep = '\t')
 
-sns.set_palette("deep", desat=.6)
-plt.hist(align_df['mapped_L_num'], 250000)
+plt.hist(align_df['mapped_L_num'])
 plt.show()
 
 with open(os.path.join(path,'results_av_01272015_align.p'), 'wb') as fp:

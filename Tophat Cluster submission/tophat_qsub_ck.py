@@ -55,7 +55,7 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/netapp/home/idriver/12222014'
+path = '/netapp/home/idriver/01272015'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'

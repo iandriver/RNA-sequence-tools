@@ -4,7 +4,7 @@ import pandas as pd
 import cPickle as pickle
 
 fpkm_matrix_dict_g ={}
-pats = ['/Volumes/Seq_data/results_av_01272015']
+pats = ['/Volumes/Seq_data/results_av_01272015_hu']
 g = 0
 coun = 0
 for p in pats:
@@ -13,7 +13,7 @@ for p in pats:
       if '_genes' in filename:
         curr_cell_fpkm_g =[]
         curr_g_file = open(os.path.join(root, filename))
-        if p == '/Volumes/Seq_data/results_av_01272015':
+        if p == '/Volumes/Seq_data/results_av_01272015_hu':
           g_cell_name = (root.split('/')[-1])
         elif p == '/Volumes/Seq_data/results_hg19_Lib1':
           g_cell_name = (root.split('/')[-1])+'_Lib1_hg19'
@@ -35,7 +35,7 @@ for p in pats:
         fpkm_matrix_dict_g[g_cell_name] = curr_cell_fpkm_g
         g=1
 fpkm_df_g = pd.DataFrame(fpkm_matrix_dict_g, index = curr_cell_genes)
-fpkm_df_g.to_csv(os.path.join(pats[0],'fpkm_matrix_genes_av_01272015.txt'), sep = '\t')
+fpkm_df_g.to_csv(os.path.join(pats[0],'fpkm_matrix_genes_av_01272015_hu.txt'), sep = '\t')
 
-with open(os.path.join(pats[0],'av_01272015_fpkm.p'), 'wb') as fp:
+with open(os.path.join(pats[0],'av_01272015_hu_fpkm.p'), 'wb') as fp:
   pickle.dump(fpkm_df_g, fp)

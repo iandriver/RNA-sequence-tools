@@ -55,7 +55,7 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/Volumes/Seq_data/01272015'
+path = '/Volumes/Seq_data/01272015_hu'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/Homo_sapiens/UCSC/hg19/Annotation/Archives/archive-2014-06-02-13-47-56/Genes/genes.gtf'
 index_gen_loc = '/netapp/home/idriver/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome'
