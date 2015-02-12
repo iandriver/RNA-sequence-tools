@@ -70,13 +70,13 @@ for root, dirs, files in os.walk(path):
     pathlist.append([root,files])
 for p in pathlist:
   n = p[0].strip('/').split('_')
-  name = n[1].split('/')[-1]+'_d4PNX'
+  name = n[3].split('/')[-1]+'_d4PNX'
   data_file = p[0]
   result_file = os.path.join(out,name)
   input_files=''
   r_num = []
   for f in p[1]:
-    if 'fastq' in f:
+    if 'fastq' in f and ".txt" not in f:
       f_split = f.split('_')
       r_name = (f_split[3][1])
       en_split = f_split[4].split('.')

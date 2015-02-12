@@ -76,8 +76,8 @@ with open("/netapp/home/idriver/pdgfra_sample_sheet.txt", "wb") as outfile:
     writer.writerows(zip(*[samp_dict[key] for key in keys]))
 
 result_file_name = 'results_pdgfra1_ctrl_pnx'
-cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o sc_expr_out /netapp/home/idriver/mm10_ERCC/genes/genes.gtf /netapp/home/idriver/pdgfra_sample_sheet.txt'
-name ='sc_expr_out'
+cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o sc_expr_out_pdgfra /netapp/home/idriver/mm10_ERCC/genes/genes.gtf /netapp/home/idriver/pdgfra_sample_sheet.txt'
+name ='sc_expr_out_pdgfra'
 command = """\
 #!/bin/sh
 #!/bin/sh
@@ -114,7 +114,7 @@ cd $TMPDIR
 cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 """ % vars()
 
-filename = 'cuffnorm.sh'
+filename = 'cuffnorm_pdgfra.sh'
 write_file(filename, command)
 jobid = qsub_submit(filename, fname='cuffnorm_pdgfra')
 print "Submitted. jobid = %d" % jobid

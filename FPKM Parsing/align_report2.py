@@ -6,7 +6,7 @@ from scipy import stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-path = '/Volumes/Seq_data/results_av_01272015_hu'
+path = '/Volumes/Seq_data/results_pdgfra1_ctrl_pnx'
 align_dict={}
 cell_list =[]
 align_dict['input_L_num'] = []
@@ -44,10 +44,10 @@ for root, dirnames, filenames in os.walk(path):
     align_dict['per_mapped'].append(per_mapped)
     f.close()
 align_df = pd.DataFrame(align_dict, index = cell_list)
-align_df.to_csv(os.path.join(path,'results_av_01272015_align.txt'), sep = '\t')
+align_df.to_csv(os.path.join(path,'results_pdgfra1_align.txt'), sep = '\t')
 
 plt.hist(align_df['mapped_L_num'])
 plt.show()
 
-with open(os.path.join(path,'results_av_01272015_align.p'), 'wb') as fp:
+with open(os.path.join(path,'results_pdgfra_align.p'), 'wb') as fp:
   pickle.dump(align_df, fp)

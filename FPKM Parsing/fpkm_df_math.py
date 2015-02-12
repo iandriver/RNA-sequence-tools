@@ -1,4 +1,4 @@
-
+import os
 import cPickle as pickle
 import numpy as np
 import pandas as pd
@@ -18,15 +18,13 @@ def delete_cells(by_cell, cell_list, del_list):
 
 
 def filter_by_mapping(path_to_align, cutoff_per_map = 50):
-    c_to_del =[]
-    with open(path_to_align, 'rb') as fp:
+  c_to_del =[]
+  with open(path_to_align, 'rb') as fp:
       a_data = pickle.load(fp)
-      ind_list = a_data.index.tolist()
-      cell_list = list(a_data.columns.values)
-      for c in cell_list:
-          if a_data[c]['per_mapped'] < cutoff_per_map:
-              c_to_del.append(c)
-    return c_to_del
+      p_mapped = a_data['per_mapped']
+      ind_list = p_mapped[p_mapped<cutoff_per_map]
+      c_to_del = ind_list.index.values
+  return c_to_del
 
 def filter_cells_sd(by_cell, cell_list, sd=1.2):
   average_gene_exp = []
@@ -76,12 +74,12 @@ def threshold_genes(by_gene, gen_list, number_expressed=3):
   return gen_list, n_by_gene
 
 
-
-with open('Lib1and2_hg19_fpkm.p', 'rb') as fp:
+path_to_file = '/Volumes/Seq_data/results_pdgfra1_ctrl_pnx'
+with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   data = pickle.load(fp)
   gen_list = data.index.tolist()
   cell_list = list(data.columns.values)
-  path_to_align='/Volumes/Seq_data/pdgfra_align.p'
+  path_to_align=os.path.join(path_to_file,'results_pdgfra_align.p')
   del_list=filter_by_mapping(path_to_align)
 
   npdata = np.array(data.values, dtype='f')
@@ -96,12 +94,12 @@ with open('Lib1and2_hg19_fpkm.p', 'rb') as fp:
   for i, l in enumerate(outlier_by_cell):
     outlier_fpkm_dict[outlier_cell_list[i]] = l
   fpkm_df_outlier = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list)
-  fpkm_df_outlier.to_csv('fpkm_matrix_genes_Lib1_2_hg19_outlier_filtered.txt', sep = '\t')
-  with open('lib1_2_outlier_by_cell.p', 'wb') as fp1:
+  fpkm_df_outlier.to_csv(os.path.join(path_to_file, 'fpkm_cuff_pdgfra1_outlier_filtered.txt'), sep = '\t')
+  with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra1_outlier_by_cell.p'), 'wb') as fp1:
     pickle.dump(outlier_by_cell, fp1)
-  with open('lib1_2_outlier_cell_list.p', 'wb') as fp2:
+  with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra1_outlier_cell_list.p'), 'wb') as fp2:
     pickle.dump(outlier_cell_list, fp2)
-  with open('lib1_2_outlier_by_gene.p', 'wb') as fp3:
+  with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra1_outlier_by_gene.p'), 'wb') as fp3:
     pickle.dump(final_by_gene, fp3)
-  with open('lib1_2_outlier_gene_list.p', 'wb') as fp4:
+  with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra1_outlier_gene_list.p'), 'wb') as fp4:
     pickle.dump(new_gene_list, fp4)

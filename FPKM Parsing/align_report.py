@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import cPickle as pickle
 
-path = '/Volumes/Seq_data/results_av_01272015'
+path = '/Volumes/Seq_data/results_pdgfra1_ctrl_pnx'
 align_dict={}
 cell_list =[]
 for root, dirnames, filenames in os.walk(path):
@@ -32,7 +32,7 @@ for root, dirnames, filenames in os.walk(path):
     align_dict[cell_name] = [input_L_num, mapped_L_num, input_R_num, mapped_R_num, per_mapped]
     f.close()
 align_df = pd.DataFrame(align_dict, index = ['input_L_num', 'mapped_L_num', 'input_R_num', 'mapped_R_num', 'per_mapped'])
-align_df.to_csv(os.path.join(path,'results_av_01272015_align.txt'), sep = '\t')
+align_df.to_csv(os.path.join(path,'results_pdgfra1_align.txt'), sep = '\t')
 
-with open(os.path.join(path,'results_av_01272015_align.p'), 'wb') as fp:
+with open(os.path.join(path,'results_pdgfra1_align.p'), 'wb') as fp:
   pickle.dump(align_df, fp)

@@ -55,20 +55,20 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/Volumes/Seq_data/01272015_hu'
+path = '/Volumes/Seq_data/10132014_pdgfra_d4_PNX'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/Homo_sapiens/UCSC/hg19/Annotation/Archives/archive-2014-06-02-13-47-56/Genes/genes.gtf'
-index_gen_loc = '/netapp/home/idriver/Homo_sapiens/UCSC/hg19/Sequence/Bowtie2Index/genome'
+annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
+index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'
+result_file_name = 'results_pdgfra1_ctrl_pnx'
 
 pathlist = []
 for root, dirs, files in os.walk(path):
-  if 'Lane' in root and '.DS_Store' not in files:
-    pathlist.append([root,files])
-for ind, p in enumerate(pathlist):
-  print p, 'p'
-  n = p[0].strip('/').split('/')
+  if 'fastq' in root:
+      pathlist.append([root,files])
+for p in pathlist:
+  n = p[0].strip('/').split('_')
   print n, 'n'
-  name = str(ind+1)+'_'+n[-2]+'_'+n[-1]
+  name = n[4].split('/')[-1]+'_d4PNX'
   print name, 'name'
   data_file = p[0]
   result_file = os.path.join(out,name)
