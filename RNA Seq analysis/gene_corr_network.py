@@ -59,7 +59,7 @@ if save_new_sig:
 
 
 def draw_graph(graph, labels=None, graph_layout='shell',
-    node_size=1600, node_color='blue', node_alpha=0.3,
+    node_size=500, node_color='blue', node_alpha=0.3,
     node_text_size=12,
     edge_color='blue', edge_alpha=0.3, edge_tickness=1,
     edge_text_pos=0.3,
@@ -104,7 +104,7 @@ gen_network_dict ={}
 graph = []
 term_list = [term_to_search]
 term_next = term_to_search
-hops_to_go = 10
+hops_to_go = 3
 hops = 0
 while term_next and hops_to_go>0:
     neg = True
@@ -121,12 +121,11 @@ while term_next and hops_to_go>0:
                 else:
                     gen_corr, corr = index[0], row['corr']
                 gen_network_dict[term_next].append((gen_corr, corr))
-                if gen_corr not in term_list
+                if gen_corr not in term_list:
                     term_list.append(gen_corr)
-                graph.append((hops, term_list.index(gen_corr), corr))
-
+                if hops != term_list.index(gen_corr):
+                    graph.append((hops, term_list.index(gen_corr)))
                 print gen_corr
-                hop_id += 1
     if not neg:
         term_next = term_list[hops]
     if neg:
@@ -135,6 +134,6 @@ while term_next and hops_to_go>0:
         term_list = False
 print gen_network_dict
 print graph
-
+draw_graph(graph, labels=term_list)
 corr_by_gene_pos.close()
 corr_by_gene_neg.close()
