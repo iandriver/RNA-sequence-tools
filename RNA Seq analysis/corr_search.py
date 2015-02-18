@@ -6,6 +6,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 from operator import itemgetter
+from matplotlib.ticker import LinearLocator
 
 path_to_file ='/Volumes/Seq_data/results_pdgfra1_ctrl_pnx'
 
@@ -49,7 +50,7 @@ if load_new_cells:
     rows = df_by_cell.shape[1]
 
 if run_corr:
-    corr_by_gene = df_by_gene.corr()
+    corr_by_gene = df_by_gene.corr(method='spearman', min_periods=3)
     corr_by_cell = df_by_cell.corr()
 
     cor = corr_by_gene
@@ -58,18 +59,18 @@ if run_corr:
     sig_corr_pos = cor[cor >=0.5]
     sig_corr_neg = cor[cor <=-0.5]
 
-    with open(os.path.join(path_to_file,'gene_correlations_sig_neg.p'), 'wb') as fp:
+    with open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'wb') as fp:
         pickle.dump(sig_corr_neg, fp)
-    with open(os.path.join(path_to_file,'gene_correlations_sig_pos.p'), 'wb') as fp0:
+    with open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'wb') as fp0:
         pickle.dump(sig_corr_pos, fp0)
-    with open(os.path.join(path_to_file,'by_gene_corr.p'), 'wb') as fp1:
+    with open(os.path.join(path_to_file,'by_gene_corr_spearman.p'), 'wb') as fp1:
         pickle.dump(corr_by_gene, fp1)
-    with open(os.path.join(path_to_file,'by_cell_corr.p'), 'wb') as fp2:
+    with open(os.path.join(path_to_file,'by_cell_corr_spearman.p'), 'wb') as fp2:
         pickle.dump(corr_by_cell, fp2)
 
 if load_new_sig:
-    corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos.p'), 'rb')
-    corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg.p'), 'rb')
+    corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'rb')
+    corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'rb')
     cor_pos = pickle.load(corr_by_gene_pos)
     cor_neg = pickle.load(corr_by_gene_neg)
     cor_pos_df = pd.DataFrame(cor_pos)
@@ -77,9 +78,9 @@ if load_new_sig:
     sig_corr = cor_pos_df.append(cor_neg_df)
     sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file,'pdgfra_corr_sig.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file,'pdgfra_corr_sig_spearman.txt'), sep = '\t')
 
-term_to_search ='Pdgfra'
+term_to_search ='Serpina3n'
 def corr_plot(term_to_search, log=False, sort=False):
     corr_tup = [(term_to_search, 1)]
     neg = True
@@ -100,15 +101,26 @@ def corr_plot(term_to_search, log=False, sort=False):
     sorted_df = df_by_gene.sort([term_to_search])
     log2_df = np.log2(df_by_gene[to_plot])
     sorted_log2_df=np.log2(sorted_df[to_plot])
+    ylabel='FPKM'
     if sort and log:
-        sorted_log2_df.plot()
+        ax = sorted_log2_df.plot()
+        xlabels = sorted_log2_df[to_plot].index.values
     elif sort:
-        sorted_df[to_plot].plot()
+        ax =sorted_df[to_plot].plot()
+        xlabels = sorted_df[to_plot].index.values
     elif log:
-        log2_df.plot()
+        ax = log2_df.plot()
+        ylabel= 'log2 FPKM'
+        xlabels = log2_df.index.values
     else:
-        df_by_gene[to_plot].plot()
-    plt.legend(loc=2,prop={'size':6})
+        ax = df_by_gene[to_plot].plot()
+        xlabels = df_by_gene[to_plot].index.values
+    ax.set_xlabel('Cell #')
+    ax.set_ylabel(ylabel)
+    ax.xaxis.set_minor_locator(LinearLocator(numticks=len(xlabels)))
+    ax.set_xticklabels(xlabels, minor=True, rotation='vertical')
+    ax.tick_params(axis='x', labelsize=5)
+    ax.legend(loc=2,prop={'size':6})
     plt.show()
 corr_plot(term_to_search, sort=True)
 corr_by_gene_pos.close()
