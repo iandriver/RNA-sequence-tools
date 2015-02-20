@@ -58,11 +58,12 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
   return int(jobid)
 
 
-path = '/netapp/home/idriver/10132014_pdgfra_d4_PNX'
+path = '/netapp/home/idriver/10242014_macs'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'
-result_file_name = 'results_pdgfra1_ctrl_pnx'
+result_file_name = 'results_macs_pnx'
+add_to_cell_name ='MacsPNX'
 call('mkdir /netapp/home/idriver/%s' % result_file_name, shell=True)
 pathlist = []
 for root, dirs, files in os.walk(path):
@@ -70,7 +71,7 @@ for root, dirs, files in os.walk(path):
     pathlist.append([root,files])
 for p in pathlist:
   n = p[0].strip('/').split('_')
-  name = n[3].split('/')[-1]+'_d4PNX'
+  name = n[-2].split('/')[-1]+'_'+add_to_cell_name
   data_file = p[0]
   result_file = os.path.join(out,name)
   input_files=''

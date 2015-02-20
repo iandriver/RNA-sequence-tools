@@ -56,7 +56,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
 samp_dict = {}
 samp_dict['sample_name'] =[]
 samp_dict['group'] = []
-pats = ['/netapp/home/idriver/results_pdgfra1_ctrl_pnx']
+pats = ['/netapp/home/idriver/results_macs_pnx']
 for p in pats:
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, '*.cxb'):
@@ -70,14 +70,14 @@ for p in pats:
             samp_dict['sample_name'].append(samp_path)
             samp_dict['group'].append(group_name)
 keys = sorted(samp_dict.keys(), reverse=True)
-with open("/netapp/home/idriver/pdgfra_sample_sheet.txt", "wb") as outfile:
+with open("/netapp/home/idriver/macs_sample_sheet.txt", "wb") as outfile:
     writer = csv.writer(outfile, delimiter = "\t")
     writer.writerow(keys)
     writer.writerows(zip(*[samp_dict[key] for key in keys]))
 
-result_file_name = 'results_pdgfra1_ctrl_pnx'
-cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o sc_expr_out_pdgfra /netapp/home/idriver/mm10_ERCC/genes/genes.gtf /netapp/home/idriver/pdgfra_sample_sheet.txt'
-name ='sc_expr_out_pdgfra'
+result_file_name = 'results_macs_pnx'
+cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o sc_expr_out_macs /netapp/home/idriver/mm10_ERCC/genes/genes.gtf /netapp/home/idriver/macs_sample_sheet.txt'
+name ='sc_expr_out_macs'
 command = """\
 #!/bin/sh
 #!/bin/sh
@@ -114,9 +114,9 @@ cd $TMPDIR
 cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 """ % vars()
 
-filename = 'cuffnorm_pdgfra.sh'
+filename = 'cuffnorm_macs.sh'
 write_file(filename, command)
-jobid = qsub_submit(filename, fname='cuffnorm_pdgfra')
+jobid = qsub_submit(filename, fname='cuffnorm_macs')
 print "Submitted. jobid = %d" % jobid
 # Write jobid to a file.
 import subprocess
