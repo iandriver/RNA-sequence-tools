@@ -8,8 +8,12 @@ import matplotlib.pylab as pl
 from operator import itemgetter
 from matplotlib.ticker import LinearLocator
 import networkx as nx
+import plotly.plotly as py
+from plotly.graph_objs import *
+import plotly.tools as tls
 
-path_to_file ='/Volumes/Seq_data/results_spc1_ctrl_pnx'
+py.sign_in('driver.ian', '0oql1n8y2r')
+path_to_file ='/Volumes/Seq_data/results_macs_pnx'
 
 load_new_cells = True
 load_new_sig = True
@@ -35,13 +39,13 @@ cmaps = {'Sequential':['Blues', 'BuGn', 'BuPu',
 'gist_rainbow', 'hsv', 'flag', 'prism']}
 
 if load_new_cells:
-    fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_spc1_outlier_by_cell.p'), 'rb')
+    fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_cell.p'), 'rb')
     by_cell = pickle.load(fpbcell)
-    fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_spc1_outlier_cell_list.p'), 'rb')
+    fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_cell_list.p'), 'rb')
     cell_list = pickle.load(fpcelllist)
-    fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_spc1_outlier_by_gene.p'), 'rb')
+    fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_gene.p'), 'rb')
     by_gene = pickle.load(fpbgene)
-    fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_spc1_outlier_gene_list.p'), 'rb')
+    fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_gene_list.p'), 'rb')
     gene_list = pickle.load(fpgenelist)
 
 
@@ -70,8 +74,8 @@ if run_corr:
         pickle.dump(corr_by_cell, fp2)
 
 if load_new_sig:
-    corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_pearson.p'), 'rb')
-    corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_pearson.p'), 'rb')
+    corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'rb')
+    corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'rb')
     cor_pos = pickle.load(corr_by_gene_pos)
     cor_neg = pickle.load(corr_by_gene_neg)
     cor_pos_df = pd.DataFrame(cor_pos)
@@ -79,12 +83,13 @@ if load_new_sig:
     sig_corr = cor_pos_df.append(cor_neg_df)
     sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file,'spc_corr_sig_pearson.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file,'macs_corr_sig_spearman.txt'), sep = '\t')
 
-term_to_search ='Areg'
+term_to_search ='Vegfb'
 def corr_plot(term_to_search, log=False, sort=False):
     corr_tup = [(term_to_search, 1)]
     neg = True
+    fig, ax = plt.subplots()
     for index, row in sig_corrs.iterrows():
         if term_to_search in index:
             neg = False
@@ -148,7 +153,8 @@ def network_plot(term_to_search):
         pos = nx.spring_layout(MG_genes)
         nx.draw(MG_genes, pos, with_labels=True, node_color='#A0CBE2')
         plt.show()
-network_plot(term_to_search)
+
 corr_plot(term_to_search, sort=True)
+
 corr_by_gene_pos.close()
 corr_by_gene_neg.close()
