@@ -37,7 +37,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
 
     # Form command
     command = 'qsub'
-    if name: command += ' -N %s' % fname
+    if fname: command += ' -N %s' % fname
     if hold_jobid: command += ' -hold_jid %d' % hold_jobid
     command += ' %s' % command_filename
 
@@ -52,11 +52,12 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     jobid = out.split(' ')[2]
 
     return int(jobid)
-
+sampl_sheet_name = 'spc_Pnx_RS'
+result_file_name = 'results_spc_pnx_RS'
 samp_dict = {}
 samp_dict['sample_name'] =[]
 samp_dict['group'] = []
-pats = ['/netapp/home/idriver/results_macs_pnx']
+pats = [os.path.join('/netapp/home/idriver', result_file_name)]
 for p in pats:
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, '*.cxb'):
@@ -70,14 +71,15 @@ for p in pats:
             samp_dict['sample_name'].append(samp_path)
             samp_dict['group'].append(group_name)
 keys = sorted(samp_dict.keys(), reverse=True)
-with open("/netapp/home/idriver/macs_sample_sheet.txt", "wb") as outfile:
+with open(os.path.join('/netapp/home/idriver', 'sample_sheet_'+result_file_name), "wb") as outfile:
     writer = csv.writer(outfile, delimiter = "\t")
     writer.writerow(keys)
     writer.writerows(zip(*[samp_dict[key] for key in keys]))
+annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
+index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
+cuff_name = 'cuffnorm_'+sampl_sheet_name
+cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o '+cuff_name+' '+annotation_file+' '+os.path.join('/netapp/home/idriver', 'sample_sheet_'+result_file_name)
 
-result_file_name = 'results_macs_pnx'
-cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o sc_expr_out_macs /netapp/home/idriver/mm10_ERCC/genes/genes.gtf /netapp/home/idriver/macs_sample_sheet.txt'
-name ='sc_expr_out_macs'
 command = """\
 #!/bin/sh
 #!/bin/sh
@@ -106,17 +108,17 @@ export PATH
 export TMPDIR=/scratch
 echo $TMPDIR
 cd $TMPDIR
-mkdir %(name)s
-mkdir -p /netapp/home/idriver/%(result_file_name)s/%(name)s
+mkdir %(cuff_name)s
+mkdir -p /netapp/home/idriver/%(result_file_name)s/%(cuff_name)s
 %(cuffnorm_cmd)s
 # Copy the results back to the project directory:
 cd $TMPDIR
-cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
+cp -r %(cuff_name)s/* /netapp/home/idriver/%(result_file_name)s/%(cuff_name)s
 """ % vars()
 
-filename = 'cuffnorm_macs.sh'
+filename = 'cuffnorm_'+sampl_sheet_name+'.sh'
 write_file(filename, command)
-jobid = qsub_submit(filename, fname='cuffnorm_macs')
+jobid = qsub_submit(filename, fname=cuff_name)
 print "Submitted. jobid = %d" % jobid
 # Write jobid to a file.
 import subprocess

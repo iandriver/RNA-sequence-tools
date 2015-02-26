@@ -58,12 +58,13 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
   return int(jobid)
 
 
-path = '/netapp/home/idriver/08182014_SpcPNXd4'
+path = '/netapp/home/idriver/07022014_Pdgfra-ctrl-1'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
-result_file_name = 'results_spc_pnx_RS'
-add_to_cell_name ='Spcd4PNX'
+add_to_cell_name ='Pdgfra-ctrl1'
+result_file_name = 'results_'+add_to_cell_name
+
 call('mkdir -p /netapp/home/idriver/%s' % result_file_name, shell=True)
 pathlist = []
 for root, dirs, files in os.walk(path):
@@ -105,8 +106,8 @@ for p in pathlist:
       print 'Incomplete File: '+name
   tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
   samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
-  cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 1500000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
-  cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 1500000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
+  cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
+  cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
   # Write script.
   contents = """\
 #!/bin/sh
@@ -147,7 +148,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-  if name != 'C5_Spcd4PNX':
+  if name != '':
       filename = '%s.sh' % name
       write_file(filename, contents)
       print tophat_cmd

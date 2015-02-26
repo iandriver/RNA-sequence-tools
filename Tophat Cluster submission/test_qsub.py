@@ -55,7 +55,7 @@ def qsub_submit(command_filename, hold_jobid = None, name = None):
 
   return int(jobid)
 
-path = '/Volumes/Seq_data/10242014_macs'
+path = '/Volumes/Seq_data/07022014_Pdgfra-ctrl-1'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'
