@@ -2,6 +2,7 @@ import cPickle as pickle
 import numpy as np
 import pandas as pd
 import os
+
 import matplotlib.pyplot as plt
 import scipy
 import json
@@ -28,6 +29,7 @@ set_link_color_palette(map(rgb2hex, palette))
 sns.set_style('white')
 
 df_by_cell = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
+df_by_gene = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
 row_dist = pd.DataFrame(squareform(pdist(df_by_cell, metric='euclidean')), columns=cell_list, index=cell_list)
 row_clusters = linkage(row_dist, metric='euclidean', method='ward')
 link_mat = pd.DataFrame(row_clusters,
@@ -42,7 +44,7 @@ def augmented_dendrogram(*args, **kwargs):
     ddata = dendrogram(*args, **kwargs)
 
     if not kwargs.get('no_plot', False):
-        for i, d in zip(ddata['icoord'], ddata['dcoord']):
+        for i, d in zip(ddata['icoord'], ddata['dcoord'], ):
             x = 0.5 * sum(i[1:3])
             y = d[1]
             if y >= 200000:
@@ -86,6 +88,8 @@ def plot_tree(dendr, pos=None, save=False):
     if save:
         plt.savefig('plot_dendrogram.png')
     plt.show()
+
+
 # Create a nested dictionary from the ClusterNode's returned by SciPy
 def add_node(node, parent):
 	# First create the new node and append it to its parent's children
@@ -97,51 +101,81 @@ def add_node(node, parent):
 	if node.right: add_node( node.right, newNode )
 
 
-
+cc = []
 # Label each node with the names of each leaf in its subtree
-def label_tree( n ):
-	# If the node is a leaf, then we have its name
-	if len(n["children"]) == 0:
-		leafNames = [ id2name[n["node_id"]] ]
+def label_tree(n, id2name):
+    # If the node is a leaf, then we have its name
+    if len(n["children"]) == 0:
+        leafNames = [ id2name[n["node_id"]] ]
 
-	# If not, flatten all the leaves in the node's subtree
-	else:
-		leafNames = reduce(lambda ls, c: ls + label_tree(c), n["children"], [])
+    # If not, flatten all the leaves in the node's subtree
+    else:
+        leafNames = reduce(lambda ls, c: ls + label_tree(c,id2name), n["children"], [])
 
-	# Delete the node id since we don't need it anymore and
-	# it makes for cleaner JSON
-	del n["node_id"]
+    cc.append((len(leafNames), [x.strip('\n') for x in leafNames]))
+    cc.sort(key=lambda tup: tup[0], reverse = True)
 
-	# Labeling convention: "-"-separated leaf names
-	n["name"] = name = "-".join(sorted(map(str, leafNames)))
+    # Delete the node id since we don't need it anymore and
+    # it makes for cleaner JSON
+    del n["node_id"]
 
-	return leafNames
-T= to_tree(row_clusters)
+    # Labeling convention: "-"-separated leaf names
+    n["name"] = name = "-".join(sorted(map(str, leafNames)))
 
-# Create dictionary for labeling nodes by their IDs
-labels = list(df_by_cell.index)
-id2name = dict(zip(range(len(labels)), labels))
+    return leafNames
 
-# Initialize nested dictionary for d3, then recursively iterate through tree
-d3Dendro = dict(children=[], name="Root1")
-add_node( T, d3Dendro )
-label_tree( d3Dendro["children"][0] )
-print label_tree
-# Output to JSON
-json.dump(d3Dendro, open("d3-dendrogram.json", "w"), sort_keys=True, indent=4)
-with open("d3-dendrogram.json", "r") as f:
-    pprint(json.load(f))
+#Makes labeled json tree for visulaization in d3
+def make_tree_json(row_clusters, df_by_cell):
+    T= to_tree(row_clusters)
 
-cutoff = 1.15
-cutoff_list =[]
-num_clusters = 0
-num_clusters_list = []
-while num_clusters != 1:
-    num_clusters, indices = clust_members(row_clusters, cutoff)
-    num_clusters_list.append(num_clusters)
-    cutoff_list.append(cutoff)
-    cutoff += 0.01
-print num_clusters_list
+    # Create dictionary for labeling nodes by their IDs
+    labels = list(df_by_cell.index)
+    id2name = dict(zip(range(len(labels)), labels))
+
+    # Initialize nested dictionary for d3, then recursively iterate through tree
+    d3Dendro = dict(children=[], name="Root1")
+    add_node( T, d3Dendro )
+    label_tree( d3Dendro["children"][0], id2name )
+    # Output to JSON
+    json.dump(d3Dendro, open("d3-dendrogram.json", "w"), sort_keys=True, indent=4)
+
+make_tree_json(row_clusters, df_by_cell)
+
+#makes
+def find_twobytwo(cc, threshold_num = 14):
+    pair_dict = {}
+    parent = cc[0][1]
+    p_num = cc[0][0]
+    l_nums = [x[0] for x in cc]
+    c_lists = [c[1] for c in cc[1:]]
+    for i, c in enumerate(c_lists):
+        for i2, c2 in enumerate(c_lists):
+            if i != i2 and len(c)>threshold_num and len(c2)>threshold_num:
+                if c+c2 in c_lists[:max(i,i2)] or c+c2 == parent:
+                    pair_dict[len(c)+len(c2)]= [c, c2]
+    g_pvalue_dict = {}
+    pvalue_by_level_dict = {}
+    sig_gene_list = []
+    for v, k in pair_dict.items():
+        cell_list1 = [x.strip('\n') for x in k[0]]
+        cell_list2 = [xx.strip('\n') for xx in k[1]]
+        df_by_cell_1 = df_by_gene[cell_list1]
+        df_by_cell_2 = df_by_gene[cell_list2]
+        df_by_gene_1 = df_by_cell_1.transpose()
+        df_by_gene_2 = df_by_cell_2.transpose()
+        for g in gene_list:
+            g_pvalue = scipy.stats.f_oneway(df_by_gene_1[g], df_by_gene_2[g])
+            if g_pvalue[0] > 3 and g_pvalue[1] <= 0.05:
+                g_pvalue_dict[g] = g_pvalue
+                if g not in [s[0] for s in sig_gene_list]:
+                    sig_gene_list.append((g, g_pvalue[1]))
+        pvalue_by_level_dict[v] = g_pvalue_dict
+    sig_gene_list.sort(key=lambda tup: tup[1])
+    sig_just_genes = [sig[0] for sig in sig_gene_list]
+    sig_by_cell = df_by_cell[sig_just_genes[:-75]]
+    cg = sns.clustermap(sig_by_cell.transpose(), z_score=1)
+    plt.show()
 
 #plot_tree(row_dendr)
+find_twobytwo(cc)
 #augmented_dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)
