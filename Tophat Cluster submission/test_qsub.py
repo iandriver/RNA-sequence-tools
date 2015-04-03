@@ -3,59 +3,9 @@ import commands
 import os
 from subprocess import call
 
-finished_cells =[]
 
-def write_file(filename, contents):
-   """Write the given contents to a text file.
-
-   ARGUMENTS
-       filename (string) - name of the file to write to, creating if it doesn't exist
-       contents (string) - contents of the file to be written
-   """
-
-   # Open the file for writing
-   file = open(filename, 'w')
-
-   # Write the file contents
-   file.write(contents)
-
-   # Close the file
-   file.close()
-
-   return
-
-def qsub_submit(command_filename, hold_jobid = None, name = None):
-  """Submit the given command filename to the queue.
-
-  ARGUMENTS
-      command_filename (string) - the name of the command file to submit
-
-  OPTIONAL ARGUMENTS
-      hold_jobid (int) - job id to hold on as a prerequisite for execution
-
-  RETURNS
-      jobid (integer) - the jobid
-  """
-
-  # Form command
-  command = 'qsub'
-  if name: command += ' -N %s' % name
-  if hold_jobid: command += ' -hold_jid %d' % hold_jobid
-  command += ' %s' % command_filename
-
-  # Submit the job and capture output.
-  import subprocess
-  print "> " + command
-  process = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-  out, err = process.communicate()
-  print(out)
-
-  # Match job id
-  jobid = out.split(' ')[2]
-
-  return int(jobid)
-
-path = '/Volumes/Seq_data/07022014_Pdgfra-ctrl-1'
+#This is for adjusting parameters on your local system to generate proper file names for tophat_qsub
+path = '/Volumes/Seq_data/02262015'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/mm10_ERCC/genes/genes.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC/Bowtie2Index_mm10/mm10_ERCC'
@@ -63,12 +13,14 @@ result_file_name = 'results_pdgfra1_ctrl_pnx'
 
 pathlist = []
 for root, dirs, files in os.walk(path):
-  if 'fastq' in root:
+
+  if dirs == []:
+      print root, files
       pathlist.append([root,files])
 for p in pathlist:
-  n = p[0].strip('/').split('_')
+  n = p[0].strip('/').split('/')
   print n, 'n'
-  name = n[-2].split('/')[-1]+'_macs'
+  name = n[-1]
   print name, 'name'
   data_file = p[0]
   result_file = os.path.join(out,name)
