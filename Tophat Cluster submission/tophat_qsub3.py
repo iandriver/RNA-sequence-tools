@@ -57,12 +57,14 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
 
     return int(jobid)
 
-
+#paths to raw reads and annotation and index of genome
 path = '/netapp/home/idriver/02262015'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
 
+#this next section parses the file names so that the paired end reads are in order and determines the name of the output file
+#use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
 for root, dirs, files in os.walk(path):
     if root.split('/')[-1]=='02262015':
@@ -109,7 +111,7 @@ for root, dirs, files in os.walk(path):
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
-        # Write script.
+        # Write bash script for qsub.
         contents = """\
 #!/bin/sh
 #$ -l arch=linux-x64
@@ -149,7 +151,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if result_file_name == 'results_Lane5_data':
+        if result_file_name == 'results_Lane8_data':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd
