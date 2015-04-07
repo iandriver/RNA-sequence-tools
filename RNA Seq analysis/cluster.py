@@ -2,10 +2,12 @@ import cPickle as pickle
 import numpy as np
 import pandas as pd
 import os
-
+import matplotlib
+matplotlib.use('QT4Agg')
 import matplotlib.pyplot as plt
 import scipy
 import json
+from sklearn.decomposition import PCA as skPCA
 from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import fcluster, linkage, dendrogram, set_link_color_palette, to_tree, inconsistent
 import seaborn as sns
@@ -16,12 +18,16 @@ path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
 
 fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
+fpbcell.close()
 fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_cell_list.p'), 'rb')
 cell_list = pickle.load(fpcelllist)
+fpcelllist.close()
 fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_gene.p'), 'rb')
 by_gene = pickle.load(fpbgene)
+fpbgene.close()
 fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
 gene_list = pickle.load(fpgenelist)
+fpgenelist.close()
 
 sns.set_palette('Set1', 10, 0.65)
 palette = sns.color_palette()
@@ -30,14 +36,21 @@ sns.set_style('white')
 
 df_by_cell = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
 df_by_gene = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
-row_dist = pd.DataFrame(squareform(pdist(df_by_cell, metric='euclidean')), columns=cell_list, index=cell_list)
+print df_by_cell
+print df_by_gene.shape
+
+cell_dist = pdist(df_by_cell, metric='euclidean')
+print cell_dist
+row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
 row_clusters = linkage(row_dist, metric='euclidean', method='ward')
+print row_clusters
 link_mat = pd.DataFrame(row_clusters,
              columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
              index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
 row_dendr = dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)
 
-
+plt.savefig('dendrogram_gene.png')
+plt.clf()
 
 def augmented_dendrogram(*args, **kwargs):
 
@@ -172,9 +185,40 @@ def find_twobytwo(cc, threshold_num = 14):
         pvalue_by_level_dict[v] = g_pvalue_dict
     sig_gene_list.sort(key=lambda tup: tup[1])
     sig_just_genes = [sig[0] for sig in sig_gene_list]
-    sig_by_cell = df_by_cell[sig_just_genes[:-75]]
-    cg = sns.clustermap(sig_by_cell.transpose(), z_score=1)
-    plt.show()
+    sig_by_cell = df_by_cell[sig_just_genes]
+    clf = skPCA(2)
+    np_by_gene = np.asarray(sig_by_cell)
+    by_gene_trans = clf.fit_transform(np_by_gene)
+    Pc_df = pd.DataFrame(clf.components_.T, columns=['PC-1', 'PC-2'], index=sig_by_cell.columns)
+    Pc_1_sort_df = pd.DataFrame.sort(pd.DataFrame.abs(Pc_df), columns = 'PC-1', ascending=False)
+    Pc_2_sort_df = pd.DataFrame.sort(pd.DataFrame.abs(Pc_df), columns = 'PC-2', ascending=False)
+    pc_1_gene_list = Pc_1_sort_df.index.values
+    pc_2_gene_list = Pc_2_sort_df.index.values
+    top_pca_list = []
+    for i, x in enumerate(pc_1_gene_list):
+        if x not in top_pca_list:
+            top_pca_list.append(x)
+        elif pc_2_gene_list[i] not in top_pca_list:
+            top_pca_list.append(pc_2_gene_list[i])
+    print top_pca_list[0:150]
+    top_by_cell = df_by_cell[top_pca_list[0:150]]
+    clf_top = skPCA(2)
+    np_top_gene = np.asarray(top_by_cell)
+    run_pca = True
+    top_gene_trans = clf_top.fit_transform(np_top_gene)
+    plt.scatter(top_gene_trans[:, 0], by_gene_trans[:, 1], alpha=0.75)
+    for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
+        plt.annotate(
+            label, 
+            xy = (x, y), xytext = (-20, 20),
+            textcoords = 'offset points', ha = 'right', va = 'bottom',
+            bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
+            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+
+    plt.savefig('skpca_2.png', bbox_inches='tight')
+    plt.clf()
+    cg = sns.clustermap(df_by_cell[top_pca_list[0:150]].transpose(), z_score=1)
+    plt.savefig('clustermap_1.png', bbox_inches='tight')
 
 #plot_tree(row_dendr)
 find_twobytwo(cc)
