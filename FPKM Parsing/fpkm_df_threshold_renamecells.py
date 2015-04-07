@@ -100,7 +100,11 @@ with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
     elif split_cell_list[0] == 'Lane7' or split_cell_list[0] == 'Lane8'and 'C' in split_cell_list[1]:
         cell_name = 'PNX'+split_cell_list[1]
     elif 'C' not in split_cell_list[1]:
+<<<<<<< Updated upstream
         bulk_ctrl_dict[split_cell_list[1]] = float(l)
+=======
+        bulk_ctrl_dict[split_cell_list[1]] = l
+>>>>>>> Stashed changes
     outlier_fpkm_dict[cell_name] = l
   fpkm_df_outlier = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list)
   bulk_ctrl_df = pd.DataFrame(bulk_ctrl_dict, index = new_gene_list)
