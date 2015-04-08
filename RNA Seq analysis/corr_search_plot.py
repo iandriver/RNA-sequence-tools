@@ -8,16 +8,22 @@ import matplotlib.pylab as pl
 from operator import itemgetter
 from matplotlib.ticker import LinearLocator
 import networkx as nx
-import plotly.plotly as py
+import plotly.plotly as pyc
 from plotly.graph_objs import *
 import plotly.tools as tls
 
-py.sign_in('driver.ian', '0oql1n8y2r')
-path_to_file ='/Volumes/Seq_data/results_macs_pnx'
+#plotly sign in information
+py.sign_in('name', 'code')
+#base path to pickle files with fpkm or count matrix
+path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
 
+#if new cell pickle files need to be loaded
 load_new_cells = True
+#if you want to load a new signifcant correlation file
 load_new_sig = True
+#if you want save a new significant correlation file (pickle)
 save_new_sig = False
+#if you want to run a new correlation (can take a while)
 run_corr = False
 
 cmaps = {'Sequential':['Blues', 'BuGn', 'BuPu',
@@ -39,13 +45,13 @@ cmaps = {'Sequential':['Blues', 'BuGn', 'BuPu',
 'gist_rainbow', 'hsv', 'flag', 'prism']}
 
 if load_new_cells:
-    fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_cell.p'), 'rb')
+    fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_by_cell.p'), 'rb')
     by_cell = pickle.load(fpbcell)
-    fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_cell_list.p'), 'rb')
+    fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_cell_list.p'), 'rb')
     cell_list = pickle.load(fpcelllist)
-    fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_gene.p'), 'rb')
+    fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_by_gene.p'), 'rb')
     by_gene = pickle.load(fpbgene)
-    fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_gene_list.p'), 'rb')
+    fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_gene_list.p'), 'rb')
     gene_list = pickle.load(fpgenelist)
 
 
@@ -54,6 +60,7 @@ if load_new_cells:
     cols = df_by_cell.shape[0]
     rows = df_by_cell.shape[1]
 
+#run correlation matrix and save only those above threshold
 if run_corr:
     corr_by_gene = df_by_gene.corr(method='spearman', min_periods=3)
     corr_by_cell = df_by_cell.corr()
@@ -73,6 +80,7 @@ if run_corr:
     with open(os.path.join(path_to_file,'by_cell_corr.p'), 'wb') as fp2:
         pickle.dump(corr_by_cell, fp2)
 
+#load or save significant correlations as needed
 if load_new_sig:
     corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'rb')
     corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'rb')
@@ -83,9 +91,12 @@ if load_new_sig:
     sig_corr = cor_pos_df.append(cor_neg_df)
     sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file,'macs_corr_sig_spearman.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file,'spc2_corr_sig_spearman.txt'), sep = '\t')
 
-term_to_search ='Vegfb'
+#gene to search
+term_to_search ='Hbegf'
+
+#corr_plot finds and plots all correlated genes, log turns on log scale, sort plots the genes in the rank order of the gene searched
 def corr_plot(term_to_search, log=False, sort=False):
     corr_tup = [(term_to_search, 1)]
     neg = True
@@ -129,6 +140,7 @@ def corr_plot(term_to_search, log=False, sort=False):
     ax.legend(loc=1,prop={'size':6})
     plt.show()
 
+#network plot plots correlated genes as network
 def network_plot(term_to_search):
     MG_genes=nx.DiGraph()
     MG_genes.add_node(term_to_search, size=10, color='red')
