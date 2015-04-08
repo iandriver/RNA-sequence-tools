@@ -29,21 +29,15 @@ fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list
 gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
 
-sns.set_palette('Set1', 10, 0.65)
+sns.set_palette('Set1', 10, 1)
 palette = sns.color_palette()
 set_link_color_palette(map(rgb2hex, palette))
 sns.set_style('white')
 
-df_by_cell = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
-df_by_gene = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
-print df_by_cell
-print df_by_gene.shape
 
-cell_dist = pdist(df_by_cell, metric='euclidean')
-print cell_dist
+cell_dist = pdist(by_cell, metric='euclidean')
 row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
 row_clusters = linkage(row_dist, metric='euclidean', method='ward')
-print row_clusters
 link_mat = pd.DataFrame(row_clusters,
              columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
              index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
@@ -152,7 +146,7 @@ def make_tree_json(row_clusters, df_by_cell):
     # Output to JSON
     json.dump(d3Dendro, open("d3-dendrogram.json", "w"), sort_keys=True, indent=4)
 
-make_tree_json(row_clusters, df_by_cell)
+make_tree_json(row_clusters, by_cell)
 
 #makes
 def find_twobytwo(cc, threshold_num = 14):
@@ -172,8 +166,8 @@ def find_twobytwo(cc, threshold_num = 14):
     for v, k in pair_dict.items():
         cell_list1 = [x.strip('\n') for x in k[0]]
         cell_list2 = [xx.strip('\n') for xx in k[1]]
-        df_by_cell_1 = df_by_gene[cell_list1]
-        df_by_cell_2 = df_by_gene[cell_list2]
+        df_by_cell_1 = by_gene[cell_list1]
+        df_by_cell_2 = by_gene[cell_list2]
         df_by_gene_1 = df_by_cell_1.transpose()
         df_by_gene_2 = df_by_cell_2.transpose()
         for g in gene_list:
@@ -185,7 +179,7 @@ def find_twobytwo(cc, threshold_num = 14):
         pvalue_by_level_dict[v] = g_pvalue_dict
     sig_gene_list.sort(key=lambda tup: tup[1])
     sig_just_genes = [sig[0] for sig in sig_gene_list]
-    sig_by_cell = df_by_cell[sig_just_genes]
+    sig_by_cell = by_cell[sig_just_genes]
     clf = skPCA(2)
     np_by_gene = np.asarray(sig_by_cell)
     by_gene_trans = clf.fit_transform(np_by_gene)
@@ -196,28 +190,29 @@ def find_twobytwo(cc, threshold_num = 14):
     pc_2_gene_list = Pc_2_sort_df.index.values
     top_pca_list = []
     for i, x in enumerate(pc_1_gene_list):
-        if x not in top_pca_list:
+        if x not in top_pca_list and x[0:2] != 'Rp':
             top_pca_list.append(x)
-        elif pc_2_gene_list[i] not in top_pca_list:
+        elif pc_2_gene_list[i] not in top_pca_list and pc_2_gene_list[i][0:2] != 'Rp':
             top_pca_list.append(pc_2_gene_list[i])
     print top_pca_list[0:150]
-    top_by_cell = df_by_cell[top_pca_list[0:150]]
+    top_by_cell = by_cell[top_pca_list[0:150]]
     clf_top = skPCA(2)
     np_top_gene = np.asarray(top_by_cell)
-    run_pca = True
     top_gene_trans = clf_top.fit_transform(np_top_gene)
-    plt.scatter(top_gene_trans[:, 0], by_gene_trans[:, 1], alpha=0.75)
-    for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
+    plt.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
+    '''for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
         plt.annotate(
             label, 
-            xy = (x, y), xytext = (-20, 20),
+            xy = (x, y), xytext = (-5, 5),
             textcoords = 'offset points', ha = 'right', va = 'bottom',
-            bbox = dict(boxstyle = 'round,pad=0.5', fc = 'yellow', alpha = 0.5),
-            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))
+            bbox = dict(boxstyle = 'round,pad=0.2', fc = 'grey', alpha = 0.5),
+            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))'''
 
+    plt.show()
     plt.savefig('skpca_2.png', bbox_inches='tight')
     plt.clf()
-    cg = sns.clustermap(df_by_cell[top_pca_list[0:150]].transpose(), z_score=1)
+    cg = sns.clustermap(by_cell[top_pca_list[0:150]].transpose(), z_score=0)
+    plt.show()
     plt.savefig('clustermap_1.png', bbox_inches='tight')
 
 #plot_tree(row_dendr)

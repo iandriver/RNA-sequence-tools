@@ -95,26 +95,24 @@ with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   bulk_ctrl_dict = {}
   for i, l in enumerate(outlier_by_cell):
     split_cell_list = outlier_cell_list[i].split('_')
-    if split_cell_list[0] == 'Lane5' or split_cell_list[0] == 'Lane6' and 'C' in split_cell_list[1]:
-        cell_name = 'CTRL'+split_cell_list[1]
-    elif split_cell_list[0] == 'Lane7' or split_cell_list[0] == 'Lane8'and 'C' in split_cell_list[1]:
-        cell_name = 'PNX'+split_cell_list[1]
-    elif 'C' not in split_cell_list[1]:
-<<<<<<< Updated upstream
-        bulk_ctrl_dict[split_cell_list[1]] = float(l)
-=======
-        bulk_ctrl_dict[split_cell_list[1]] = l
->>>>>>> Stashed changes
-    outlier_fpkm_dict[cell_name] = l
+    if split_cell_list[0] == 'Lane5' and 'C' in split_cell_list[1] and split_cell_list[1] != 'pdgfra' or split_cell_list[0] == 'Lane6' and 'C' in split_cell_list[1] and split_cell_list[1] != 'pdgfra':
+        cell_name = 'CTRL_'+split_cell_list[1]
+    elif split_cell_list[0] == 'Lane7' and 'C' in split_cell_list[1] and split_cell_list[1] != 'pdgfra' or split_cell_list[0] == 'Lane8'and 'C' in split_cell_list[1] and split_cell_list[1] != 'pdgfra':
+        cell_name = 'PNX_'+split_cell_list[1]
+    elif 'C' not in split_cell_list[1] or split_cell_list[1] == 'pdgfra':
+        bulk_ctrl_dict[split_cell_list[1]] = [float(lx) for lx in l]
+
+    outlier_fpkm_dict[cell_name] = [float(lx) for lx in l]
   fpkm_df_outlier = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list)
   bulk_ctrl_df = pd.DataFrame(bulk_ctrl_dict, index = new_gene_list)
+  outlier_cell_list = [x for x in list(fpkm_df_outlier.columns.values)]
   fpkm_df_outlier.to_csv(os.path.join(path_to_file, 'fpkm_cuff_pdgfra2_outlier_filtered.txt'), sep = '\t')
   bulk_ctrl_df.to_csv(os.path.join(path_to_file, 'fpkm_cuff_pdgfra2_bulk_ctrls.txt'), sep = '\t')
   with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_cell.p'), 'wb') as fp1:
-    pickle.dump(fpkm_df_outlier, fp1)
+    pickle.dump(fpkm_df_outlier.transpose(), fp1)
   with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_cell_list.p'), 'wb') as fp2:
     pickle.dump(outlier_cell_list, fp2)
   with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_gene.p'), 'wb') as fp3:
-    pickle.dump(fpkm_df_outlier.transpose(), fp3)
+    pickle.dump(fpkm_df_outlier, fp3)
   with open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'wb') as fp4:
     pickle.dump(new_gene_list, fp4)
