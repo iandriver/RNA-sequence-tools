@@ -4,14 +4,33 @@ import pandas as pd
 import cPickle as pickle
 import subprocess
 import csv
+'''This program takes accepted_hits.bam files from tophat and turns them into
+counts and creates matrix file of cells/conditions and counts using htseq:
+http://www-huber.embl.de/HTSeq/doc/overview.html
 
-fpkm_matrix_dict_g ={}
+The files are sorted using samtools: http://www.htslib.org/
+
+Paired end mates are fixed and RNA metrics collected using Picard tools:
+http://broadinstitute.github.io/picard/
+The 3' to 5' bias of each sample is collected as a matrix file for easy plotting.
+'''
+#list of file paths with mapped hits
 pats = ['/Volumes/Seq_data/results_Lane1_data', '/Volumes/Seq_data/results_Lane2_data', '/Volumes/Seq_data/results_Lane3_data', '/Volumes/Seq_data/results_Lane4_data']
+
+#output path
+path = '/Volumes/Seq_data'
+
+#initialize dictonaries for collected output
+fpkm_matrix_dict_g ={}
 count_dict = {}
 norm_read_dict = {}
 picard_stats_dict = {}
+
+#collect gene_list once since it the same between all samples
 st = 1
 gene_list = []
+
+#loop through all files and sort, fix, count, collect metrics on each
 for p in pats:
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, 'accepted_hits.bam'):
@@ -100,7 +119,7 @@ for k, v in norm_read_dict.items():
         print norm_read_dict[k], len(norm_read_dict[k])
 print index3
 
-path = '/Volumes/Seq_data'
+#form pandas dataframe of each and save as tab delimited file
 count_df = pd.DataFrame(count_dict, index = gene_list)
 count_df.to_csv(os.path.join(path,'spc2_count_table.txt'), sep = '\t')
 pic_stats_df = pd.DataFrame(picard_stats_dict, index = index1)
