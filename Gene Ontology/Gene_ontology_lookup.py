@@ -1,5 +1,6 @@
 import os
 from Bio import SeqIO
+import cPickle as pickle
 import sys
 from Bio import Entrez
 from sets import Set
@@ -11,11 +12,16 @@ from pprint import pprint
 #for Entrez. 2) retrieve_annotation takes a gene id list and returns the gene ontology in a dict of dicts
 
 # *Always* tell NCBI who you are
-Entrez.email = "whoever@where.edu"
+Entrez.email = "ian.driver@ucsf.edu"
 
-path_to_gojson ="/path/to/go_json_file
+path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
+path_to_gojson ="/Volumes/Seq_data"
 
-def file_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgfra-ly6a-dcn-group.txt'):
+fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
+gene_list = pickle.load(fpgenelist)
+fpgenelist.close()
+
+def singular_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgfra-ly6a-dcn-group.txt'):
   gene_df = pd.read_csv(path+file, delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
@@ -23,55 +29,39 @@ def file_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgfra-l
     final_list.append(g.split('_')[0])
   return final_list
 
-def chop_genelist(path='/Users/idriver/RockLab-files/test'):
-  g = 0
-  for root, dirnames, filenames in os.walk(path):
-    for filename in fnmatch.filter(filenames, '*.fpkm_tracking'):
-      if '_genes' in filename:
-        curr_cell_fpkm_g =[]
-        curr_g_file = open(os.path.join(root, filename))
-        g_cell_name = (root.split('/')[-1])
-        if g == 0:
-          curr_cell_genes = []
-        for k, line in enumerate(curr_g_file):
-          if k == 0:
-            header = line.strip('\n').split('\t')
-          if k > 0:
-            curr_g_line = line.strip('\n').split('\t')
-            #exclude RNA spike controls
-            if g == 0 and curr_g_line[3][:4] != 'ERCC':
-              curr_cell_genes.append(curr_g_line[0])
-        g = 1
-        break
-  sp_gene_list = []
-  x_last =0
-  for x in range(999, len(curr_cell_genes), 999):
-    sp_gene_list.append(curr_cell_genes[x_last:x])
-    x_last = x
-  return sp_gene_list
 
-def check_ids(id_list, filename='gene_gos.json'):
+def check_ids(id_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+    print id_list, 'check_ids'
     already_known = []
-    with open(filename, 'r') as gg2:
-        go_json = json.load(gg2)
-    for gg_entry in go_json:
-        if gg_entry in id_list:
-            already_known.append(id_list.pop(id_list.index(gg_entry)))
-    new_id_list = id_list
+    if os.path.isfile(filename):
+        with open(filename, 'r') as gg2:
+            go_json = json.load(gg2)
+        for gg_entry in go_json:
+            if gg_entry in id_list:
+                already_known.append(id_list.pop(id_list.index(gg_entry)))
+        new_id_list = id_list
+    else:
+        new_id_list = id_list
+        already_known =[]
     return new_id_list, already_known
 
 #get_gene takes a list of gene names as symbols (set for mouse here) and returns a list of gene IDs
 #that NCBI can use
 def get_gene(gene_list):
-  new_gene_list, already_known = check_ids(gene_list)
-  gene_id_list = []
-  for g_term in new_gene_list:
-    g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+g_term+'[sym]')
-    g_record = Entrez.read(g_handle)
-    gene_id = g_record["IdList"]
-    gene_id_list.append(gene_id[0])
-  return gene_id_list, already_known
-            
+    print gene_list
+    new_gene_list, already_known = check_ids(gene_list)
+    gene_id_list = []
+    for g_term in new_gene_list:
+        g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+g_term+'[sym]')
+        g_record = Entrez.read(g_handle)
+        gene_id = g_record["IdList"]
+        if gene_id != []:
+            gene_id_list.append(gene_id[0])
+            print g_term+' found'
+        else:
+            print g_term+' not in Entrez'
+    return gene_id_list, already_known
+
 #retrieve_annotation takes a list of gene IDs and returns all of the associated
 #Gene Ontology terms as a dictionary
 def retrieve_annotation(id_list):
@@ -124,28 +114,31 @@ def retrieve_annotation(id_list):
   # {Function_type2: [GOterm3, GOterm4]}]}
   return goterms
 
-def update_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'):
+def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
     id_list, already_known = get_gene(gene_list)
-    GO_json = json.dumps(retrieve_annotation(id_list))
-    gos = json.loads(GO_json)
-    if os.path.isfile(filename):
-        with open(filename,'r') as f:
-            data = json.load(f)
+    if id_list != []:
+        GO_json = json.dumps(retrieve_annotation(id_list))
+        gos = json.loads(GO_json)
+        if os.path.isfile(filename):
+            with open(filename,'r') as f:
+                data = json.load(f)
 
-        data.update(gos)
+            data.update(gos)
 
-        with open(filename, 'w') as f2:
-            json.dump(data, f2)
+            with open(filename, 'w') as f2:
+                json.dump(data, f2)
+        else:
+            print "Creating new go JSON: "+filename
+            data = gos
+            with open(filename, 'w') as f2:
+                json.dump(data, f2)
     else:
-        print "Creating new go JSON: "+filename
-        with open(filename, 'w') as f2:
-            json.dump(data, f2)
+        with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
+            go_json = json.load(gg2)
+        for g in already_known:
+            pprint(go_json[g])
 
 
-gene_list = ['Dcn']
-
-update_json(gene_list)
-
-with open('gene_gos.json', 'r') as gg2:
-    go_json = json.load(gg2)
-pprint(go_json)
+gene_input = raw_input('Enter gene name(s): ')
+gene_to_search = [str(gene_input)]
+return_json(gene_to_search)
