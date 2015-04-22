@@ -6,6 +6,7 @@ from Bio import Entrez
 from sets import Set
 import json
 from pprint import pprint
+import pandas as pd
 
 #Basic script for fetching gene ontology from Entrez
 #Starting with common gene names in a list 1) get_gene takes the list and returns gene ids that are suitable
@@ -14,14 +15,14 @@ from pprint import pprint
 # *Always* tell NCBI who you are
 Entrez.email = "ian.driver@ucsf.edu"
 
-path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
+path_to_file ='/Volumes/Seq_data/counts_sheppard_all'
 path_to_gojson ="/Volumes/Seq_data"
 
-fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
-gene_list = pickle.load(fpgenelist)
-fpgenelist.close()
+#fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
+#gene_list = pickle.load(fpgenelist)
+#fpgenelist.close()
 
-def singular_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgfra-ly6a-dcn-group.txt'):
+def singular_gene_list(path=path_to_file, file = '/pca_gene_list.txt'):
   gene_df = pd.read_csv(path+file, delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
@@ -131,8 +132,8 @@ def update_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
             with open(filename, 'w') as f2:
                 json.dump(data, f2)
 
-def return_json(gene_name, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
-    id_list, already_known = get_gene([gene_name])
+def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+    id_list, already_known = get_gene(gene_list)
     if id_list != []:
         GO_json = json.dumps(retrieve_annotation(id_list))
         gos = json.loads(GO_json)
@@ -144,8 +145,30 @@ def return_json(gene_name, filename=os.path.join(path_to_gojson, 'gene_gos.json'
 
             with open(filename, 'w') as f2:
                 json.dump(data, f2)
-    if os.path.isfile(filename):
-        with open(filename,'r') as f:
-            data = json.load(f)
-            go_gene = data[gene_name]
-    return go_gene
+        else:
+            print "Creating new go JSON: "+filename
+            data = gos
+            with open(filename, 'w') as f2:
+                json.dump(data, f2)
+    else:
+        with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
+            go_json = json.load(gg2)
+        for g in already_known:
+            return go_json[g]
+
+with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
+    go_json = json.load(gg2)
+go_search_term ='integral component of membrane'
+g_list = singular_gene_list()
+search_term_dict ={}
+search_term_list = []
+for g in g_list:
+    try:
+        gene = go_json[g][2]['Component']
+    except:
+        pass
+    if go_search_term in gene:
+        search_term_list.append(g)
+search_term_dict[go_search_term] = search_term_list
+searches_df = pd.DataFrame(search_term_dict)
+searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes.txt'), sep = '\t')
