@@ -77,14 +77,24 @@ def threshold_genes(by_gene, gen_list, number_expressed=3):
 
 #given a pandas dataframe of gene expression split out ERCC and return seperate dataframes of each
 def sep_ERCC(pd_by_gene, gen_list):
-    ERCC_pos_list = []
+    w_gene_list = list(gen_list)
     ERCC_list= []
-    for i, gen in enumerate(gen_list):
+    pop_list =[]
+    to_del = []
+    for i, gen in enumerate(w_gene_list):
         if 'ERCC' in gen:
-            ERCC_list.append(gen_list.pop(i))
-    pd_by_gene_no_ERCC = pd_by_gene[gen_list]
+            pop_list.append(i)
+        if '_' in gen:
+            to_del.append(i)
+    to_del = sorted(to_del, reverse=True)
+    for d in to_del:
+        del w_gene_list[d]
+    pop_list = sorted(pop_list, reverse=True)
+    for pos in pop_list:
+        ERCC_list.append(w_gene_list.pop(pos))
+    pd_by_gene_no_ERCC = pd_by_gene[w_gene_list]
     pd_ERCC = pd_by_gene[ERCC_list]
-    return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), gen_list
+    return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
 path_to_file = '/Volumes/Seq_data/Spc2_counts'
 base_name ='count_spc2'
@@ -127,8 +137,10 @@ with open(os.path.join(path_to_file,'spc_count_raw.p'), 'rb') as fp:
               outlier_fpkm_dict[cell_name] = [int(lx) for lx in l]
   df_bulk = pd.DataFrame(bulk_ctrl_dict, index = new_gene_list1)
   fpkm_df_outlier1 = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list1)
-  fpkm_df_outlier, df_ERCC, new_gene_list  = sep_ERCC(fpkm_df_outlier1.transpose(), new_gene_list1)
-  bulk_ctrl_df, df_bulk_ERCC, bulk_gene_list = sep_ERCC(df_bulk.transpose(), new_gene_list1)
+  mod_gen_list = list(new_gene_list1)
+  fpkm_df_outlier, df_ERCC, new_gene_list  = sep_ERCC(fpkm_df_outlier1.transpose(), mod_gen_list)
+  mod_gen_list = list(new_gene_list1)
+  bulk_ctrl_df, df_bulk_ERCC, bulk_gene_list = sep_ERCC(df_bulk.transpose(), mod_gen_list)
   outlier_cell_list = [x for x in list(fpkm_df_outlier.columns.values)]
   df_ERCC.to_csv(os.path.join(path_to_file, base_name+'_ERCC.txt'), sep = '\t')
   df_bulk_ERCC.to_csv(os.path.join(path_to_file, base_name+'_bulkonly_ERCC.txt'), sep = '\t')

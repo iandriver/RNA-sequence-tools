@@ -15,14 +15,14 @@ import pandas as pd
 # *Always* tell NCBI who you are
 Entrez.email = "ian.driver@ucsf.edu"
 
-path_to_file ='/Volumes/Seq_data/counts_sheppard_all'
+path_to_file ='/Volumes/Seq_data/Spc2_counts'
 path_to_gojson ="/Volumes/Seq_data"
 
 #fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
 #gene_list = pickle.load(fpgenelist)
 #fpgenelist.close()
 
-def singular_gene_list(path=path_to_file, file = '/pca_gene_list.txt'):
+def singular_gene_list(path=path_to_file, file = '/sep_score_genes_fromPCA.txt'):
   gene_df = pd.read_csv(path+file, delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
@@ -48,7 +48,6 @@ def check_ids(id_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
 #get_gene takes a list of gene names as symbols (set for mouse here) and returns a list of gene IDs
 #that NCBI can use
 def get_gene(gene_list):
-    print gene_list
     new_gene_list, already_known = check_ids(gene_list)
     gene_id_list = []
     for g_term in new_gene_list:
@@ -156,19 +155,32 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
         for g in already_known:
             return go_json[g]
 
+g_list = singular_gene_list()
+#update_json(g_list)
 with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
     go_json = json.load(gg2)
-go_search_term ='integral component of membrane'
-g_list = singular_gene_list()
+go_search_term =[('Component', 'integral component of membrane'), ('Function', 'cytokine activity'), ('Function', 'sequence-specific DNA binding transcription factor activity')]
+term_index =['Function', 'Process', 'Component']
 search_term_dict ={}
 search_term_list = []
-for g in g_list:
-    try:
-        gene = go_json[g][2]['Component']
-    except:
-        pass
-    if go_search_term in gene:
-        search_term_list.append(g)
-search_term_dict[go_search_term] = search_term_list
+search_term_dict['GeneID'] = []
+search_term_dict['GroupID'] = []
+for go_term in go_search_term:
+    for g in g_list:
+        try:
+            gene = go_json[g][term_index.index(go_term[0])][go_term[0]]
+        except:
+            print g
+            gene = False
+            pass
+
+        if gene:
+            if go_term[1] in gene:
+                if g not in search_term_dict['GeneID']:
+                    search_term_list.append(g)
+                    search_term_dict['GeneID'].append(g)
+                    search_term_dict['GroupID'].append(go_term[1])
+                else:
+                    pass
 searches_df = pd.DataFrame(search_term_dict)
-searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes.txt'), sep = '\t')
+searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_topseps.txt'), sep = '\t', index=False)
