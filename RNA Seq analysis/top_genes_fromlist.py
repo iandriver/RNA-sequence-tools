@@ -10,13 +10,13 @@ import seaborn as sns
 import numpy as np
 from operator import itemgetter
 
-shared_df = pd.DataFrame.from_csv('/Volumes/Seq_data/Spc2_counts/count_spc2_outlier_filtered.txt', sep='\t')
+shared_df = pd.DataFrame.from_csv('/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis/fpkm_cuff_pdgfra2_outlier_filtered.txt', sep='\t')
 shared_list = []
 for x in shared_df.index:
     shared_list.append(x.rstrip())
 
 path_to_file ='/Volumes/Seq_data/Spc2_counts'
-start_file_name = 'count_spc2'
+start_file_name = 'norm_cpm'
 fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
 fpbcell.close()
@@ -30,7 +30,7 @@ fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list
 gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
 
-def singular_gene_list(path=path_to_file, file = '/spc_2_top5000_pca.txt'):
+def singular_gene_list(path=path_to_file, file = '/go_search_genes.txt'):
     gene_df = pd.read_csv(path+file, delimiter= '\t')
     gene_list = gene_df['GeneID'].tolist()
     final_list = []
@@ -52,7 +52,7 @@ def sort_df_bylist(shared_list, num_to_show=50):
 
 #a list of genes to search for ranking categories (how well does expression level define categories)
 #split_on='sybol to split cell name', pos=index number of category name after split, cat_name=[list of category names]
-def find_gen_rank(gen_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
+def find_gen_rank_one(gen_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
 
     score_tup =[]
     for g in gen_list:
@@ -81,13 +81,30 @@ def find_gen_rank(gen_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
             score_tup.append((g,max(score_list)))
     score_tup.sort(key=itemgetter(1), reverse=True)
     score_df = pd.DataFrame(score_tup, columns=['GeneID', 'Maxscore'])
-    score_df.to_csv(os.path.join(path_to_file, 'sep_score_genes_fromPCA.txt'), sep = '\t', index=False)
+    score_df.to_csv(os.path.join(path_to_file, 'sep_score_genes_all.txt'), sep = '\t', index=False)
 
+def find_gen_rank(g_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
+    score_tup =[]
+    for g in g_list:
+        sorted_df = by_cell.sort([g])
+        score_on = 'd4pnx'
+        g_df = sorted_df[g]
+        ranked_cells = sorted_df.index.values
+        ranked_cat = [x.split(split_on)[pos] for x in ranked_cells]
+        div_by = int(len(ranked_cat)/len(cat_name))
+        start = div_by *(len(cat_name)-1)
+        score1 = len([x for x in ranked_cat[start:len(ranked_cat)] if x == score_on])
+        tot = len([x for x in ranked_cat if x == score_on])
+        res_score = float(score1)/float(tot)
+        score = "%.3f" % res_score
+        score_tup.append((g,float(score)))
+    score_tup.sort(key=itemgetter(1), reverse=True)
+    score_df = pd.DataFrame(score_tup, columns=['GeneID', 'Maxscore'])
+    score_df.to_csv(os.path.join(path_to_file, 'sep_score_genes_all.txt'), sep = '\t', index=False)
 
+gene_list_toplot = singular_gene_list()[0:100]
 
-gene_list_toplot = ['Cdk1', 'G0s2', 'Dixdc1']
-
-term_to_sort = 'Dixdc1'
+term_to_sort = 'Hbegf'
 sorted_df = by_cell.sort([term_to_sort])
 
 selected_df = sorted_df[gene_list_toplot]
@@ -107,8 +124,8 @@ def plot_genes(df_to_plot, log=False):
     plt.show()
 
     plt.clf()
-    cg = sns.clustermap(df_to_plot.transpose(), z_score=0)
+    cg = sns.clustermap(df_to_plot.transpose(), z_score=1)
     plt.show()
 
 plot_genes(selected_df, log=False)
-#find_gen_rank(singular_gene_list())
+#find_gen_rank(gene_list)
