@@ -15,18 +15,28 @@ import pandas as pd
 # *Always* tell NCBI who you are
 Entrez.email = "ian.driver@ucsf.edu"
 
-path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_liver'
+#the file path where gene list will be and where new list will output
+path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_lung'
+#where the json gene ontology database is stored
 path_to_gojson ="/Volumes/Seq_data"
+#name of file containing gene
+gene_file_source = 'lung_norm_cpm_outlier_by_gene.p'
+#if you want to update the database change to True
+update =False
 
-def pickle_g_list(path_to_file, file):
+#will only take pickle files and .txt singular files (has [GeneID] column)
+if gene_file_soure[-1] != 'p':
+    singular = True
+
+def return_pickle(path_to_file, file):
     fpgenelist = open(os.path.join(path_to_file,file), 'rb')
     gene_list = pickle.load(fpgenelist)
     return gene_list
     fpgenelist.close()
 
 
-def singular_gene_list(path=path_to_file, file = '/spc_2_top5000_pca.txt'):
-  gene_df = pd.read_csv(path+file, delimiter= '\t')
+def singular_gene_list(path=path_to_file, file ):
+  gene_df = pd.read_csv(os.path.join(path_to_file,file), delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
   for g in gene_list:
@@ -158,15 +168,19 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
         for g in already_known:
             return go_json[g]
 
-g_list = pickle_g_list(path_to_file, 'liver_norm_cpm_outlier_gene_list.p')
-#update_json(g_list)
+if singular:
+    g_list = singular_gene_list(path_to_file, gene_file_source)
+else:
+    g_list = return_pickle(path_to_file, gene_file_source)
+if update:
+    update_json(g_list)
 with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
     go_json = json.load(gg2)
 go_search_term =[('Component', 'integral component of membrane'), ('Function', 'cytokine activity'),
                 ('Function', 'sequence-specific DNA binding transcription factor activity'),
                 ('Process','positive regulation of fibroblast migration'),('Process','tumor necrosis factor-mediated signaling pathway'),
                 ('Process', 'lung morphogenesis'), ('Process', 'lung development'), ('Process', 'liver development'),
-                 ('Process', 'kidney development'), ('Component', 'extracellular matrix')]
+                 ('Process', 'kidney development'), ('Component', 'extracellular matrix'), ('Function','extracellular matrix structural constituent')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict ={}
 search_term_list = []
@@ -189,4 +203,4 @@ for go_term in go_search_term:
                 else:
                     pass
 searches_df = pd.DataFrame(search_term_dict)
-searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_liver_all.txt'), sep = '\t', index=False)
+searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_lung_all.txt'), sep = '\t', index=False)
