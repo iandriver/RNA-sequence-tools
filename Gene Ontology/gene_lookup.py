@@ -15,14 +15,17 @@ import pandas as pd
 # *Always* tell NCBI who you are
 Entrez.email = "ian.driver@ucsf.edu"
 
-path_to_file ='/Volumes/Seq_data/Spc2_counts'
+path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_liver'
 path_to_gojson ="/Volumes/Seq_data"
 
-#fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
-#gene_list = pickle.load(fpgenelist)
-#fpgenelist.close()
+def pickle_g_list(path_to_file, file):
+    fpgenelist = open(os.path.join(path_to_file,file), 'rb')
+    gene_list = pickle.load(fpgenelist)
+    return gene_list
+    fpgenelist.close()
 
-def singular_gene_list(path=path_to_file, file = '/sep_score_genes_fromPCA.txt'):
+
+def singular_gene_list(path=path_to_file, file = '/spc_2_top5000_pca.txt'):
   gene_df = pd.read_csv(path+file, delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
@@ -155,11 +158,15 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
         for g in already_known:
             return go_json[g]
 
-g_list = singular_gene_list()
+g_list = pickle_g_list(path_to_file, 'liver_norm_cpm_outlier_gene_list.p')
 #update_json(g_list)
 with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
     go_json = json.load(gg2)
-go_search_term =[('Component', 'integral component of membrane'), ('Function', 'cytokine activity'), ('Function', 'sequence-specific DNA binding transcription factor activity')]
+go_search_term =[('Component', 'integral component of membrane'), ('Function', 'cytokine activity'),
+                ('Function', 'sequence-specific DNA binding transcription factor activity'),
+                ('Process','positive regulation of fibroblast migration'),('Process','tumor necrosis factor-mediated signaling pathway'),
+                ('Process', 'lung morphogenesis'), ('Process', 'lung development'), ('Process', 'liver development'),
+                 ('Process', 'kidney development'), ('Component', 'extracellular matrix')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict ={}
 search_term_list = []
@@ -173,7 +180,6 @@ for go_term in go_search_term:
             print g
             gene = False
             pass
-
         if gene:
             if go_term[1] in gene:
                 if g not in search_term_dict['GeneID']:
@@ -183,4 +189,4 @@ for go_term in go_search_term:
                 else:
                     pass
 searches_df = pd.DataFrame(search_term_dict)
-searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_topseps.txt'), sep = '\t', index=False)
+searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_liver_all.txt'), sep = '\t', index=False)
