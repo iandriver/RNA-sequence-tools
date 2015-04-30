@@ -8,14 +8,16 @@ import matplotlib.pylab as pl
 from operator import itemgetter
 from matplotlib.ticker import LinearLocator
 import networkx as nx
-import plotly.plotly as pyc
+import plotly.plotly as py
 from plotly.graph_objs import *
 import plotly.tools as tls
+import itertools
 
 #plotly sign in information
-py.sign_in('name', 'code')
+py.sign_in('driver.ian', '0oql1n8y2r')
 #base path to pickle files with fpkm or count matrix
-path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_kidney'
+start_file_name = 'kidney_norm_cpm'
 
 #if new cell pickle files need to be loaded
 load_new_cells = True
@@ -45,14 +47,18 @@ cmaps = {'Sequential':['Blues', 'BuGn', 'BuPu',
 'gist_rainbow', 'hsv', 'flag', 'prism']}
 
 if load_new_cells:
-    fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_by_cell.p'), 'rb')
+    fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
     by_cell = pickle.load(fpbcell)
-    fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_cell_list.p'), 'rb')
+    fpbcell.close()
+    fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
     cell_list = pickle.load(fpcelllist)
-    fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_by_gene.p'), 'rb')
+    fpcelllist.close()
+    fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
     by_gene = pickle.load(fpbgene)
-    fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_spc2_outlier_gene_list.p'), 'rb')
+    fpbgene.close()
+    fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
     gene_list = pickle.load(fpgenelist)
+    fpgenelist.close()
 
 
     df_by_gene = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
@@ -91,16 +97,33 @@ if load_new_sig:
     sig_corr = cor_pos_df.append(cor_neg_df)
     sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file,'spc2_corr_sig_spearman.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file,'kidney_counts_corr_sig_spearman.txt'), sep = '\t')
+
+def find_gen_rank(g, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
+
+    sorted_df = by_cell.sort([g])
+    score_on = 'd4pnx'
+    g_df = sorted_df[g]
+    ranked_cells = sorted_df.index.values
+    ranked_cat = [x.split(split_on)[pos] for x in ranked_cells]
+    div_by = int(len(ranked_cat)/len(cat_name))
+    start = div_by *(len(cat_name)-1)
+    score1 = len([x for x in ranked_cat[start:len(ranked_cat)] if x == score_on])
+    tot = len([x for x in ranked_cat if x == score_on])
+    res_score = float(score1)/float(tot)
+    return "%.2f" % res_score
 
 #gene to search
-term_to_search ='Hbegf'
+term_to_search ='Sparc'
 
 #corr_plot finds and plots all correlated genes, log turns on log scale, sort plots the genes in the rank order of the gene searched
 def corr_plot(term_to_search, log=False, sort=False):
     corr_tup = [(term_to_search, 1)]
     neg = True
+    rank = False
     fig, ax = plt.subplots()
+    marker = itertools.cycle(('+', 'o', '*'))
+    linestyles = itertools.cycle(('--', '-.', '-', ':'))
     for index, row in sig_corrs.iterrows():
         if term_to_search in index:
             neg = False
@@ -112,13 +135,15 @@ def corr_plot(term_to_search, log=False, sort=False):
     if neg:
         print term_to_search+' not correlated.'
     corr_tup.sort(key=itemgetter(1), reverse=True)
+    corr_df = pd.DataFrame(corr_tup, columns=['GeneID', 'Correlation'])
+    corr_df.to_csv(os.path.join(path_to_file, 'Corr_w_'+term_to_search+'_list.txt'), sep = '\t', index=False)
     for c in corr_tup:
         print c
     to_plot = [x[0] for x in corr_tup]
     sorted_df = df_by_gene.sort([term_to_search])
     log2_df = np.log2(df_by_gene[to_plot])
     sorted_log2_df=np.log2(sorted_df[to_plot])
-    ylabel='FPKM'
+    ylabel='Counts'
     if sort and log:
         ax = sorted_log2_df.plot()
         xlabels = sorted_log2_df[to_plot].index.values
@@ -134,10 +159,22 @@ def corr_plot(term_to_search, log=False, sort=False):
         xlabels = df_by_gene[to_plot].index.values
     ax.set_xlabel('Cell #')
     ax.set_ylabel(ylabel)
+    if rank:
+        ax.set_title('Correlates with '+term_to_search+'.  Percent seperate PNX: '+find_gen_rank(term_to_search))
+    else:
+        ax.set_title('Correlates with '+term_to_search)
     ax.xaxis.set_minor_locator(LinearLocator(numticks=len(xlabels)))
-    ax.set_xticklabels(xlabels, minor=True, rotation='vertical')
-    ax.tick_params(axis='x', labelsize=5)
-    ax.legend(loc=1,prop={'size':6})
+    ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
+    ax.set_ylim([0, df_by_gene[to_plot].values.max()])
+    ax.tick_params(axis='x', labelsize=1)
+    if len(corr_tup) > 15:
+        l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
+        ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=6, prop={'size':6})
+    else:
+        l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
+        ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
+    fig = plt.gcf()
+    fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
     plt.show()
 
 #network plot plots correlated genes as network

@@ -65,11 +65,14 @@ for p in pats:
     file_name = p.split('_')[1]
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, '*.cxb'):
-            g_cell_name = root.split('/')[-1]
-            if len(g_cell_name.split('_')[-1]) == 2 and g_cell_name.split('_')[-1][0] == 'C':
-              cell_name = g_cell_name[0:-1]+'0'+g_cell_name[-1]
+            g_cell_title = (root.split('/')[-1])
+            g_cell_name = g_cell_title.split('_')[-1]
+            if len(g_cell_name) == 2 and g_cell_name[0] =='C':
+                cell_name = 'C0'+g_cell_name[-1]
+            elif g_cell_name[0] =='C':
+                cell_name = g_cell_name
             else:
-              cell_name = g_cell_name
+                cell_name = g_cell_title
             group_name = file_name+'_'+cell_name
             samp_path = os.path.join(root,filename)
             samp_dict['sample_name'].append(samp_path)

@@ -15,7 +15,7 @@ http://broadinstitute.github.io/picard/
 The 3' to 5' bias of each sample is collected as a matrix file for easy plotting.
 '''
 #list of file paths with mapped hits
-pats = ['/Volumes/Seq_data/results_Lane1_data', '/Volumes/Seq_data/results_Lane2_data', '/Volumes/Seq_data/results_Lane3_data', '/Volumes/Seq_data/results_Lane4_data']
+pats = ['/Volumes/Seq_data/results_Lane5_data', '/Volumes/Seq_data/results_Lane6_data', '/Volumes/Seq_data/results_Lane7_data', '/Volumes/Seq_data/results_Lane8_data']
 
 #output path
 path = '/Volumes/Seq_data'
@@ -121,9 +121,11 @@ print index3
 
 #form pandas dataframe of each and save as tab delimited file
 count_df = pd.DataFrame(count_dict, index = gene_list)
-count_df.to_csv(os.path.join(path,'spc2_count_table.txt'), sep = '\t')
+count_df.to_csv(os.path.join(path,'pdgfra2_count_table.txt'), sep = '\t')
+with open(os.path.join(path,'htseq_count_pdgfra2.p'), 'wb') as fp1:
+    pickle.dump(count_df, fp1)
 pic_stats_df = pd.DataFrame(picard_stats_dict, index = index1)
-pic_stats_df.to_csv(os.path.join(path,'spc2_picard_stats.txt'), sep = '\t')
+pic_stats_df.to_csv(os.path.join(path,'pdgfra2_picard_stats.txt'), sep = '\t')
 norm_read_df = pd.DataFrame(norm_read_dict, index = index3)
-norm_read_df.to_csv(os.path.join(path,'spc2_read_bias.txt'), sep = '\t')
+norm_read_df.to_csv(os.path.join(path,'pdgfra2_read_bias.txt'), sep = '\t')
 pd.DataFrame.plot(norm_read_df)

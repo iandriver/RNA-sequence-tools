@@ -6,28 +6,29 @@ import pandas as pd
 
 def delete_cells(by_cell, cell_list, del_list):
   to_delete1 =[]
-  for pos, num in enumerate(cell_list):
-    if num in del_list:
-      to_delete1.append(num)
-
-  for pos in to_delete1:
+  for pos, cell_name in enumerate(cell_list):
+    if cell_name in del_list:
+      to_delete1.append(pos)
+  to_delete = sorted(to_delete1)
+  for pos in to_delete:
+    print pos
     print 'Deleted specific cell '+cell_list[pos]
     del cell_list[pos]
-  n_by_cell = np.delete(by_cell, to_delete1, axis=0)
+  n_by_cell = np.delete(by_cell, to_delete, axis=0)
   return cell_list, n_by_cell
 
 
-def filter_by_mapping(path_to_align, cutoff_per_map = 50):
+def filter_by_mapping(path_to_align, cutoff_per_map = 50000):
   c_to_del =[]
   with open(path_to_align, 'rb') as fp:
       a_data = pickle.load(fp)
 
-      p_mapped = a_data['per_mapped']
+      p_mapped = a_data['mapped_num']
       ind_list = p_mapped[p_mapped<cutoff_per_map]
       c_to_del = ind_list.index.values
   return c_to_del
 
-def filter_cells_sd(by_cell, cell_list, sd=1.3):
+def filter_cells_sd(by_cell, cell_list, sd=1.2):
   average_gene_exp = []
 
   for genes in by_cell:
@@ -59,7 +60,7 @@ def filter_cells_sd(by_cell, cell_list, sd=1.3):
   return cell_list, n_by_cell
 
 
-def threshold_genes(by_gene, gen_list, number_expressed=3):
+def threshold_genes(by_gene, gen_list, number_expressed=2):
   g_todelete = []
   for g1, gene in enumerate(by_gene):
     cells_exp = (gene >= 1.0).sum()
@@ -75,12 +76,12 @@ def threshold_genes(by_gene, gen_list, number_expressed=3):
   return gen_list, n_by_gene
 
 
-path_to_file = '/Volumes/Seq_data/results_macs_pnx'
+path_to_file = '/Volumes/Seq_data/cuffnorm_sheppard_all_RS_lung'
 with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   data = pickle.load(fp)
   gen_list = data.index.tolist()
   cell_list = [x.strip('_0') for x in list(data.columns.values)]
-  path_to_align=os.path.join(path_to_file,'results_macs_align.p')
+  path_to_align=os.path.join(path_to_file,'results_lung_all_align.p')
   del_list=filter_by_mapping(path_to_align)
 
   npdata = np.array(data.values, dtype='f')
@@ -95,12 +96,12 @@ with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   for i, l in enumerate(outlier_by_cell):
     outlier_fpkm_dict[outlier_cell_list[i]] = l
   fpkm_df_outlier = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list)
-  fpkm_df_outlier.to_csv(os.path.join(path_to_file, 'fpkm_cuff_macs1_outlier_filtered.txt'), sep = '\t')
-  with open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_cell.p'), 'wb') as fp1:
+  fpkm_df_outlier.to_csv(os.path.join(path_to_file, 'fpkm_cuff_lung_outlier_filtered.txt'), sep = '\t')
+  with open(os.path.join(path_to_file,'fpkm_cuff_lung_outlier_by_cell.p'), 'wb') as fp1:
     pickle.dump(outlier_by_cell, fp1)
-  with open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_cell_list.p'), 'wb') as fp2:
+  with open(os.path.join(path_to_file,'fpkm_cuff_lung_outlier_cell_list.p'), 'wb') as fp2:
     pickle.dump(outlier_cell_list, fp2)
-  with open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_by_gene.p'), 'wb') as fp3:
+  with open(os.path.join(path_to_file,'fpkm_cuff_lung_outlier_by_gene.p'), 'wb') as fp3:
     pickle.dump(final_by_gene, fp3)
-  with open(os.path.join(path_to_file,'fpkm_cuff_macs1_outlier_gene_list.p'), 'wb') as fp4:
+  with open(os.path.join(path_to_file,'fpkm_cuff_lung_outlier_gene_list.p'), 'wb') as fp4:
     pickle.dump(new_gene_list, fp4)

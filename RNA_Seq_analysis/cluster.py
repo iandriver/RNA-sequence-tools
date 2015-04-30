@@ -14,28 +14,23 @@ import seaborn as sns
 from matplotlib.colors import rgb2hex, colorConverter
 from pprint import pprint
 
-path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
-
-fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_cell.p'), 'rb')
+path_to_file ='/Volumes/Seq_data/Spc2_counts'
+start_file_name = 'norm_cpm'
+fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
 fpbcell.close()
-fpcelllist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_cell_list.p'), 'rb')
+fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
 cell_list = pickle.load(fpcelllist)
 fpcelllist.close()
-fpbgene = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_gene.p'), 'rb')
+fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
 by_gene = pickle.load(fpbgene)
 fpbgene.close()
-fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
+fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
 gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
 
-sns.set_palette('Set1', 10, 1)
-palette = sns.color_palette()
-set_link_color_palette(map(rgb2hex, palette))
-sns.set_style('white')
 
-
-cell_dist = pdist(by_cell, metric='euclidean')
+cell_dist = pdist(np.array(by_cell), metric='euclidean')
 row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
 row_clusters = linkage(row_dist, metric='euclidean', method='ward')
 link_mat = pd.DataFrame(row_clusters,
@@ -43,11 +38,11 @@ link_mat = pd.DataFrame(row_clusters,
              index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
 row_dendr = dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)
 
-plt.savefig('dendrogram_gene.png')
+plt.savefig(os.path.join(path_to_file,'dendrogram_gene.png'))
 plt.clf()
 
 def augmented_dendrogram(*args, **kwargs):
-
+    plt.clf()
     ddata = dendrogram(*args, **kwargs)
 
     if not kwargs.get('no_plot', False):
@@ -59,8 +54,8 @@ def augmented_dendrogram(*args, **kwargs):
                 plt.annotate("%.3g" % y, (x, y), xytext=(0, -8),
                          textcoords='offset points',
                          va='top', ha='center')
-
     plt.show()
+    plt.savefig(os.path.join(path_to_file,'augmented_dendrogram.png'))
 
 def cluster_indices(cluster_assignments):
     n = cluster_assignments.max()
@@ -93,7 +88,7 @@ def plot_tree(dendr, pos=None, save=False):
     plt.xlim(xmin-10, xmax + 0.1*abs(xmax))
     plt.ylim(ymin, ymax + 0.1*abs(ymax))
     if save:
-        plt.savefig('plot_dendrogram.png')
+        plt.savefig(os.path.join(path_to_file,'plot_dendrogram.png'))
     plt.show()
 
 
@@ -144,7 +139,7 @@ def make_tree_json(row_clusters, df_by_cell):
     add_node( T, d3Dendro )
     label_tree( d3Dendro["children"][0], id2name )
     # Output to JSON
-    json.dump(d3Dendro, open("d3-dendrogram.json", "w"), sort_keys=True, indent=4)
+    json.dump(d3Dendro, open(os.path.join(path_to_file,"d3-dendrogram.json"), "w"), sort_keys=True, indent=4)
 
 make_tree_json(row_clusters, by_cell)
 
@@ -179,6 +174,9 @@ def find_twobytwo(cc, threshold_num = 14):
         pvalue_by_level_dict[v] = g_pvalue_dict
     sig_gene_list.sort(key=lambda tup: tup[1])
     sig_just_genes = [sig[0] for sig in sig_gene_list]
+    return sig_just_genes
+
+def plot_PCA(sig_just_genes):
     sig_by_cell = by_cell[sig_just_genes]
     clf = skPCA(2)
     np_by_gene = np.asarray(sig_by_cell)
@@ -196,25 +194,34 @@ def find_twobytwo(cc, threshold_num = 14):
             top_pca_list.append(pc_2_gene_list[i])
     print top_pca_list[0:150]
     top_by_cell = by_cell[top_pca_list[0:150]]
-    clf_top = skPCA(2)
-    np_top_gene = np.asarray(top_by_cell)
+    clf_top = skPCA(n_components=2)
+    np_top_gene = np.asarray(top_by_cell.transpose())
+    print top_by_cell
+    print np_top_gene
     top_gene_trans = clf_top.fit_transform(np_top_gene)
-    plt.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
-    '''for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
-        plt.annotate(
-            label, 
-            xy = (x, y), xytext = (-5, 5),
-            textcoords = 'offset points', ha = 'right', va = 'bottom',
-            bbox = dict(boxstyle = 'round,pad=0.2', fc = 'grey', alpha = 0.5),
-            arrowprops = dict(arrowstyle = '->', connectionstyle = 'arc3,rad=0'))'''
-
-    plt.show()
-    plt.savefig('skpca_2.png', bbox_inches='tight')
     plt.clf()
-    cg = sns.clustermap(by_cell[top_pca_list[0:150]].transpose(), z_score=0)
+    fig, ax = plt.subplots()
+    ax.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
+    ax.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0]+1)])
+    ax.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1]+1)])
+    print np_top_gene.shape
+    print top_gene_trans.shape
+    print len(top_by_cell.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
+    for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
+        ax.annotate(label, (x, y))
     plt.show()
-    plt.savefig('clustermap_1.png', bbox_inches='tight')
+    plt.savefig(os.path.join(path_to_file,'skpca_2.png'), bbox_inches='tight')
+    plt.clf()
+    sns.set_palette("RdBu_r", 10, 1)
+    return top_pca_list
+
+def clust_heatmap(top_pca_list, num_to_plot=75):
+    cg = sns.clustermap(by_cell[top_pca_list[0:num_to_plot]].transpose(), z_score=0)
+    plt.show()
+    plt.savefig(os.path.join(path_to_file,'clustermap_1.png'), bbox_inches='tight')
 
 #plot_tree(row_dendr)
-find_twobytwo(cc)
-#augmented_dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)
+sig_gene_list = find_twobytwo(cc)
+top_pca = plot_PCA(sig_gene_list)
+clust_heatmap(top_pca)
+augmented_dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)

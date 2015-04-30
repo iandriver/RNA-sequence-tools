@@ -14,8 +14,11 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.cluster.hierarchy import fcluster, linkage, dendrogram, set_link_color_palette, to_tree, inconsistent
 import seaborn as sns
 from matplotlib.colors import rgb2hex, colorConverter
+from collections import defaultdict
 
 path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
+run_pca =True
+
 
 fpbcell = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
@@ -37,8 +40,8 @@ row_clusters = linkage(row_dist, metric='euclidean', method='ward')
 link_mat = pd.DataFrame(row_clusters,
              columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
              index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
-row_dendr = dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)
-
+row_dendr = dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8);
+plt.clf()
 cluster_idxs = defaultdict(list)
 for c, pi in zip(row_dendr['color_list'], row_dendr['icoord']):
     for leg in pi[1:3]:
@@ -66,14 +69,22 @@ class Clusters(dict):
 
 cluster_classes = Clusters()
 for c, l in cluster_idxs.items():
-    i_l = [den['ivl'][i] for i in l]
-    cluster_classes[i_l] = c
+    i_l = [row_dendr['ivl'][i] for i in l]
+    for l2 in i_l:
+        cluster_classes[l2] = c
 
 clf = skPCA(2)
 np_by_gene = np.asarray(by_gene)
 
-by_gene_trans = clf.fit_transform(np_by_gene)
-
+if run_pca:
+    by_gene_trans = clf.fit_transform(np_by_gene)
+    with open(os.path.join(path_to_file,'gene_fit_trans.p'), 'wb') as fp:
+        pickle.dump(by_gene_trans, fp)
+else:
+    p_gen_trans =  open(os.path.join(path_to_file,'gene_fit_trans.p'), 'rb')
+    by_gene_trans = pickle.load(p_gen_trans)
+    p_gen_trans.close()
+print by_gene_trans
 plt.scatter(by_gene_trans[:, 0], by_gene_trans[:, 1], c=[cluster_classes[x] for x in gene_list], edgecolor='none', alpha=0.5)
-plt.colorbar()
-plt.show()
+
+plt.savefig('skpca_1.png', bbox_inches='tight')

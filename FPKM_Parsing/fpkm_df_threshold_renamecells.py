@@ -18,21 +18,21 @@ def delete_cells(by_cell, cell_list, del_list):
   return cell_list, n_by_cell
 
 
-def filter_by_mapping(path_to_align, cutoff_per_map = 50000):
+def filter_by_mapping(path_to_align, cutoff_per_map = 50):
   c_to_del =[]
   with open(path_to_align, 'rb') as fp:
       a_data = pickle.load(fp)
 
-      p_mapped = a_data['mapped_num']
+      p_mapped = a_data['per_mapped']
       ind_list = p_mapped[p_mapped<cutoff_per_map]
       c_to_del = ind_list.index.values
   return c_to_del
 
-def filter_cells_sd(by_cell, cell_list, sd=1.0):
+def filter_cells_sd(by_cell, cell_list, sd=1.3):
   average_gene_exp = []
 
   for genes in by_cell:
-    gen_exp = (genes >= 0).sum()
+    gen_exp = (genes >= 1).sum()
     average_gene_exp.append(gen_exp)
   np_av = np.array(average_gene_exp)
   averg = np.average(np_av)
@@ -51,7 +51,7 @@ def filter_cells_sd(by_cell, cell_list, sd=1.0):
   print "Number of cells remaining: "+str(len(cell_list))
   naverage_gene_exp = []
   for ngenes in n_by_cell:
-    ngen_exp = (ngenes >= 0).sum()
+    ngen_exp = (ngenes >= 1).sum()
     naverage_gene_exp.append(ngen_exp)
   nnp_av = np.array(naverage_gene_exp)
   naverg = np.average(nnp_av)
@@ -63,7 +63,7 @@ def filter_cells_sd(by_cell, cell_list, sd=1.0):
 def threshold_genes(by_gene, gen_list, number_expressed=3):
   g_todelete = []
   for g1, gene in enumerate(by_gene):
-    cells_exp = (gene >= 0.5).sum()
+    cells_exp = (gene >= 1.0).sum()
     if cells_exp < number_expressed:
       g_todelete.append(g1)
   g1_todelete = sorted(g_todelete, reverse = True)
@@ -77,21 +77,32 @@ def threshold_genes(by_gene, gen_list, number_expressed=3):
 
 #given a pandas dataframe of gene expression split out ERCC and return seperate dataframes of each
 def sep_ERCC(pd_by_gene, gen_list):
-    ERCC_pos_list = []
+    w_gene_list = list(gen_list)
     ERCC_list= []
-    for i, gen in enumerate(gen_list):
+    pop_list =[]
+    to_del = []
+    for i, gen in enumerate(w_gene_list):
         if 'ERCC' in gen:
-            ERCC_list.append(gen_list.pop(i))
-    pd_by_gene_no_ERCC = pd_by_gene[gen_list]
+            pop_list.append(i)
+        if '_' in gen:
+            to_del.append(i)
+    to_del = sorted(to_del, reverse=True)
+    for d in to_del:
+        del w_gene_list[d]
+    pop_list = sorted(pop_list, reverse=True)
+    for pos in pop_list:
+        ERCC_list.append(w_gene_list.pop(pos))
+    pd_by_gene_no_ERCC = pd_by_gene[w_gene_list]
     pd_ERCC = pd_by_gene[ERCC_list]
-    return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), gen_list
+    return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
-path_to_file = '/Volumes/Seq_data/counts_sheppard_all'
-with open(os.path.join(path_to_file,'norm_cpm_all_good.p'), 'rb') as fp:
+path_to_file = '/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
+base_name ='fpkm_cuff_pdgfra2'
+with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   data = pickle.load(fp)
   gen_list = data.index.tolist()
   cell_list = [x.strip('_0') for x in list(data.columns.values)]
-  path_to_align=os.path.join(path_to_file,'results_sheppard_all_align.p')
+  path_to_align=os.path.join(path_to_file,'results_pdgfra2_all_align.p')
   del_list=filter_by_mapping(path_to_align)
 
   npdata = np.array(data.values, dtype='f')
@@ -104,7 +115,7 @@ with open(os.path.join(path_to_file,'norm_cpm_all_good.p'), 'rb') as fp:
   final_by_gene = outlier_by_cell.transpose()
   outlier_fpkm_dict = {}
   bulk_ctrl_dict = {}
-  filter_on_lane = False
+  filter_on_lane = True
   if filter_on_lane:
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')
@@ -116,23 +127,30 @@ with open(os.path.join(path_to_file,'norm_cpm_all_good.p'), 'rb') as fp:
             outlier_fpkm_dict[cell_name] = [float(lx) for lx in l]
         else:
             bulk_ctrl_dict['_'.join(split_cell_list[1:])] = [float(lix) for lix in l]
-  filter_controls = False
-  if filter_controls:
+  filter_count_controls = False
+  if filter_count_controls:
       for i, l in enumerate(outlier_by_cell):
           cell_name = outlier_cell_list[i]
           if 'neg' in cell_name or '+' in cell_name or '-' in cell_name:
-              bulk_ctrl_dict[cell_name] = [float(lix) for lix in l]
+              bulk_ctrl_dict[cell_name] = [int(lix) for lix in l]
           else:
-              outlier_fpkm_dict[cell_name] = [float(lx) for lx in l]
-  for i, l in enumerate(outlier_by_cell):
-    outlier_fpkm_dict[outlier_cell_list[i]] = l
-  fpkm_df_outlier = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list1)
-  fpkm_df_outlier.to_csv(os.path.join(path_to_file, 'norm_cpm_outlier_filtered.txt'), sep = '\t')
-  with open(os.path.join(path_to_file,'norm_cpm_outlier_by_gene.p'), 'wb') as fp1:
-    pickle.dump(pd.DataFrame(outlier_by_cell.transpose(), columns=outlier_cell_list, index=new_gene_list1), fp1)
-  with open(os.path.join(path_to_file,'norm_cpm_outlier_cell_list.p'), 'wb') as fp2:
+              outlier_fpkm_dict[cell_name] = [int(lx) for lx in l]
+  df_bulk = pd.DataFrame(bulk_ctrl_dict, index = new_gene_list1)
+  fpkm_df_outlier1 = pd.DataFrame(outlier_fpkm_dict, index = new_gene_list1)
+  mod_gen_list = list(new_gene_list1)
+  fpkm_df_outlier, df_ERCC, new_gene_list  = sep_ERCC(fpkm_df_outlier1.transpose(), mod_gen_list)
+  mod_gen_list = list(new_gene_list1)
+  bulk_ctrl_df, df_bulk_ERCC, bulk_gene_list = sep_ERCC(df_bulk.transpose(), mod_gen_list)
+  outlier_cell_list = [x for x in list(fpkm_df_outlier.columns.values)]
+  df_ERCC.to_csv(os.path.join(path_to_file, base_name+'_ERCC.txt'), sep = '\t')
+  df_bulk_ERCC.to_csv(os.path.join(path_to_file, base_name+'_bulkonly_ERCC.txt'), sep = '\t')
+  fpkm_df_outlier.to_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep = '\t')
+  bulk_ctrl_df.to_csv(os.path.join(path_to_file, base_name+'_bulk_ctrls.txt'), sep = '\t')
+  with open(os.path.join(path_to_file,base_name+'_outlier_by_cell.p'), 'wb') as fp1:
+    pickle.dump(fpkm_df_outlier.transpose(), fp1)
+  with open(os.path.join(path_to_file,base_name+'_outlier_cell_list.p'), 'wb') as fp2:
     pickle.dump(outlier_cell_list, fp2)
-  with open(os.path.join(path_to_file,'norm_cpm_outlier_by_cell.p'), 'wb') as fp3:
-    pickle.dump(pd.DataFrame(final_by_gene.transpose(), columns=new_gene_list1, index=outlier_cell_list), fp3)
-  with open(os.path.join(path_to_file,'norm_cpm_outlier_gene_list.p'), 'wb') as fp4:
-    pickle.dump(new_gene_list1, fp4)
+  with open(os.path.join(path_to_file,base_name+'_outlier_by_gene.p'), 'wb') as fp3:
+    pickle.dump(fpkm_df_outlier, fp3)
+  with open(os.path.join(path_to_file,base_name+'_outlier_gene_list.p'), 'wb') as fp4:
+    pickle.dump(new_gene_list, fp4)

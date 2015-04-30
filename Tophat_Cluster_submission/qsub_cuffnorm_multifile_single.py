@@ -52,40 +52,47 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     jobid = out.split(' ')[2]
 
     return int(jobid)
-sampl_sheet_name = 'spc_Pnx_RS'
-result_file_name = 'results_spc_pnx_RS'
+sampl_sheet_name = 'sheppard_all_RS'
+result_file_names = ['results_lung_raw', 'results_liver_raw', 'results_kidney_raw']
+
 samp_dict = {}
 samp_dict['sample_name'] =[]
 samp_dict['group'] = []
-pats = [os.path.join('/netapp/home/idriver', result_file_name)]
-for p in pats:
+pats = []
+for fname in result_file_names:
+    p = os.path.join('/netapp/home/idriver', fname)
+    file_name = fname.split('_')[1]
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, '*.cxb'):
-            g_cell_name = (root.split('/')[-1])
-            if len(g_cell_name.split('_')[0]) == 2:
-              cell_name = 'C0'+g_cell_name.split('_')[0][-1]
+            g_cell_name = root.split('/')[-1]
+            num = g_cell_name.split('_')[-1]
+            if len(num) == 2:
+              cell_name = '_'.join(g_cell_name.split('_')[0:-1])+'_'+'0'+num
+            elif len(num) == 1:
+              cell_name = '_'.join(g_cell_name.split('_')[0:-1])+'_'+'00'+num
             else:
-              cell_name = g_cell_name.split('_')[0]
-            group_name = g_cell_name.split('_')[1]+'_'+cell_name
+              cell_name = g_cell_name
             samp_path = os.path.join(root,filename)
             samp_dict['sample_name'].append(samp_path)
-            samp_dict['group'].append(group_name)
-keys = sorted(samp_dict.keys(), reverse=True)
-with open(os.path.join('/netapp/home/idriver', 'sample_sheet_'+result_file_name), "wb") as outfile:
+            samp_dict['group'].append(cell_name)
+    keys = sorted(samp_dict.keys(), reverse=True)
+with open(os.path.join('/netapp/home/idriver', 'sample_sheet_'+sampl_sheet_name), "wb") as outfile:
     writer = csv.writer(outfile, delimiter = "\t")
     writer.writerow(keys)
     writer.writerows(zip(*[samp_dict[key] for key in keys]))
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
 cuff_name = 'cuffnorm_'+sampl_sheet_name
-cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o '+cuff_name+' '+annotation_file+' '+os.path.join('/netapp/home/idriver', 'sample_sheet_'+result_file_name)
+cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o '+cuff_name+' '+annotation_file+' '+os.path.join('/netapp/home/idriver', 'sample_sheet_'+sampl_sheet_name)
+mk_dir = 'mkdir -p '+os.path.join('/netapp/home/idriver', cuff_name)
+subprocess.call(mk_dir, shell=True)
 
 command = """\
 #!/bin/sh
 #!/bin/sh
 #$ -l arch=linux-x64
 #$ -S /bin/bash
-#$ -o /netapp/home/idriver/%(result_file_name)s
+#$ -o /netapp/home/idriver/%(cuff_name)s
 #$ -e /netapp/home/idriver/error_spc
 #$ -cwd
 #$ -r y
@@ -109,13 +116,12 @@ export TMPDIR=/scratch
 echo $TMPDIR
 cd $TMPDIR
 mkdir %(cuff_name)s
-mkdir -p /netapp/home/idriver/%(result_file_name)s/%(cuff_name)s
+
 %(cuffnorm_cmd)s
 # Copy the results back to the project directory:
 cd $TMPDIR
-cp -r %(cuff_name)s/* /netapp/home/idriver/%(result_file_name)s/%(cuff_name)s
+cp -r %(cuff_name)s/* /netapp/home/idriver/%(cuff_name)s
 """ % vars()
-
 filename = 'cuffnorm_'+sampl_sheet_name+'.sh'
 write_file(filename, command)
 jobid = qsub_submit(filename, fname=cuff_name)
