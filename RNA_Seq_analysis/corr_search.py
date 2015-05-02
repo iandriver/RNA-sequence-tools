@@ -21,6 +21,11 @@ start_file_name = 'liver_norm_cpm'
 #gene to search
 term_to_search ='Col1a1'
 
+#if you need to run a new correlation (can take a while)
+run_corr = True
+
+#difine the threshold for significant correlation (0-1 one being perfect correlation)
+sig_threshold =0.3
 #define correlation method options are: 'pearson', 'kendall', 'spearman'
 method_name = 'pearson'
 #Minimum number of observations required per pair of columns to have a valid result. Currently only available for pearson and spearman correlation.
@@ -32,8 +37,7 @@ plot_sort = True
 plot_log = False
 #if you want save a new significant correlation file (pickle)
 save_new_sig = True
-#if you need to run a new correlation (can take a while)
-run_corr = True
+
 #can rank genes by category separation (single gene clustering) if true define categories
 #in find_gen_rank function
 rank = False
@@ -69,8 +73,8 @@ if run_corr:
     cor = corr_by_gene
     cor.loc[:,:] =  np.tril(cor.values, k=-1)
     cor = cor.stack()
-    sig_corr_pos = cor[cor >=0.5]
-    sig_corr_neg = cor[cor <=-0.5]
+    sig_corr_pos = cor[cor >=sig_threshold]
+    sig_corr_neg = cor[cor <=(sig_threshold*-1)]
 
     with open(os.path.join(path_to_file,'gene_correlations_sig_neg_'+method_name+'.p'), 'wb') as fp:
         pickle.dump(sig_corr_neg, fp)
