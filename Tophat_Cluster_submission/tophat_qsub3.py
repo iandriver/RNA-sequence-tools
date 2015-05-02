@@ -107,7 +107,7 @@ for root, dirs, files in os.walk(path):
                 final_files = sort_num[0]+' '+sort_num[1].strip(',')
             except IndexError:
                 print 'Incomplete File: '+name
-        tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
+        tophat_cmd = 'tophat2 -p 8 -r 200 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -124,7 +124,7 @@ for root, dirs, files in os.walk(path):
 #$ -l netapp=10G,scratch=40G,mem_total=22G
 #$ -pe smp 8
 #$ -R yes
-#$ -l h_rt=3:59:00
+#$ -l h_rt=5:59:00
 set echo on
 date
 hostname
@@ -151,7 +151,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if result_file_name == 'results_Lane8_data':
+        if name == 'spc_ctrl_C93':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd
