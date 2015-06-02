@@ -14,20 +14,20 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_liver'
+path_to_file ='/Volumes/Seq_data/cuffnorm_chapman_hu_all'
 #for labeling all output files
-start_file_name = 'liver_norm_cpm'
+start_file_name = 'fpkm_chapman_hu_all'
 
 #gene to search
-term_to_search ='Col1a1'
+term_to_search =raw_input('Enter gene name to search correlation:')
 
 #if you need to run a new correlation (can take a while)
-run_corr = True
+run_corr = False
 
 #difine the threshold for significant correlation (0-1 one being perfect correlation)
-sig_threshold =0.3
+sig_threshold =0.5
 #define correlation method options are: 'pearson', 'kendall', 'spearman'
-method_name = 'pearson'
+method_name = 'spearman'
 #Minimum number of observations required per pair of columns to have a valid result. Currently only available for pearson and spearman correlation.
 min_period = 3
 
@@ -115,6 +115,7 @@ def find_gen_rank(g, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
 
 #corr_plot finds and plots all correlated genes, log turns on log scale, sort plots the genes in the rank order of the gene searched
 def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
+    plt.clf()
     corr_tup = [(term_to_search, 1)]
     neg = True
     fig, ax = plt.subplots()
@@ -171,7 +172,8 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
         ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
     fig = plt.gcf()
     fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
-    plt.show()
+    plt.savefig(os.path.join(path_to_file, start_file_name+'_corr_with_'+term_to_search), bbox_inches='tight')
+    plt.close(fig)
 
 
 

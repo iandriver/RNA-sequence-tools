@@ -52,8 +52,8 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     jobid = out.split(' ')[2]
 
     return int(jobid)
-sampl_sheet_name = 'pdgfra2_all_RS'
-result_file_names = ['results_Lane5_data', 'results_Lane6_data', 'results_Lane7_data', 'results_Lane8_data']
+sampl_sheet_name = 'spc_d0_4_7'
+result_file_names = ['results_SPC_d7', 'results_Lane1_data', 'results_Lane2_data', 'results_Lane3_data', 'results_Lane4_data']
 
 samp_dict = {}
 samp_dict['sample_name'] =[]
@@ -62,13 +62,25 @@ pats = []
 for fname in result_file_names:
     pats.append(os.path.join('/netapp/home/idriver', fname))
 for p in pats:
-    file_name = p.split('_')[1]
+    if p.split('_')[1][0:-1] == 'Lane':
+        if p.split('_')[1][-1] == '1' or p.split('_')[1][-1] == '2':
+            file_name = 'D0_ctrl'
+        if p.split('_')[1][-1] == '3' or p.split('_')[1][-1] == '4':
+            file_name = 'D4_pnx'
+    else:
+        file_name = 'D7_pnx'
     for root, dirnames, filenames in os.walk(p):
         for filename in fnmatch.filter(filenames, '*.cxb'):
             g_cell_title = (root.split('/')[-1])
-            g_cell_name = g_cell_title.split('_')[-1]
-            if len(g_cell_name) == 2 and g_cell_name[0] =='C':
-                cell_name = 'C0'+g_cell_name[-1]
+            if root.split('/')[-2].split('_')[-1]== 'data':
+                g_cell_name = g_cell_title.split('_')[-1]
+            else:
+                g_cell_name = g_cell_title
+            if len(g_cell_name.strip('_')) == 2 and g_cell_name[0] =='C':
+                if g_cell_name[-1]=='_':
+                    cell_name = 'C0'+g_cell_name[-2]+'_'
+                else:
+                    cell_name = 'C0'+g_cell_name[-1]
             elif g_cell_name[0] =='C':
                 cell_name = g_cell_name
             else:

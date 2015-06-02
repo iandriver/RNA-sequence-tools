@@ -5,11 +5,12 @@ import cPickle as pickle
 from scipy import stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 
 path = '/Volumes/Seq_data'
 result_file_names = ['results_kidney_raw', 'results_liver_raw', 'results_lung_raw']
 cell_list =[]
-align_dict ={}
+align_dict =OrderedDict()
 align_dict['input_num'] = []
 align_dict['mapped_num'] = []
 align_dict['mult_num'] = []

@@ -58,11 +58,11 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
   return int(jobid)
 
 
-path = '/netapp/home/idriver/07022014_Pdgfra-ctrl-1'
+path = '/netapp/home/idriver/10132014_pdgfra_d4_PNX'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
-add_to_cell_name ='Pdgfra-ctrl1'
+add_to_cell_name ='Pdgfra-pnxd4'
 result_file_name = 'results_'+add_to_cell_name
 
 call('mkdir -p /netapp/home/idriver/%s' % result_file_name, shell=True)
@@ -104,7 +104,7 @@ for p in pathlist:
       final_files = sort_num[0]+' '+sort_num[1].strip(',')
     except IndexError:
       print 'Incomplete File: '+name
-  tophat_cmd = 'tophat2 -p 8 -r 50 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
+  tophat_cmd = 'tophat2 -p 8 -r 200 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
   samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
   cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
   cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -121,7 +121,7 @@ for p in pathlist:
 #$ -l netapp=10G,scratch=40G,mem_total=22G
 #$ -pe smp 8
 #$ -R yes
-#$ -l h_rt=3:59:00
+#$ -l h_rt=6:59:00
 set echo on
 date
 hostname
@@ -148,7 +148,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-  if name != '':
+  if name.split('_')[0] in ['C35','C66','C91', 'C92']:
       filename = '%s.sh' % name
       write_file(filename, contents)
       print tophat_cmd

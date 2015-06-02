@@ -2,8 +2,9 @@ import fnmatch
 import os
 import pandas as pd
 import cPickle as pickle
+from collections import OrderedDict
 
-fpkm_matrix_dict_g ={}
+fpkm_matrix_dict_g =OrderedDict()
 pats = ['/Volumes/Seq_data/results_av_01272015_hu']
 g = 0
 coun = 0

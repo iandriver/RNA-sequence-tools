@@ -11,12 +11,12 @@ import numpy as np
 from operator import itemgetter
 
 #the file path where gene list will be and where new list will output
-path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+path_to_file = '/Volumes/Seq_data/results_spc2_n2/cuffnorm_spc2_all_n2'
 #name of file containing gene
 gene_file_source = 'go_search_genes_lung_all.txt'
 
 
-path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+
 start_file_name = 'fpkm_cuff_spc2'
 fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
@@ -58,8 +58,8 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
         tot = len([x for x in ranked_cat if x == score_on])
         res_score = float(score1)/float(tot)
         score = "%.3f" % res_score
-        score_tup.append((gene, float(score), go_term))
-    score_df = pd.DataFrame(score_tup, columns=['GeneID', 'Rankscore', 'GroupID'])
+        score_tup.append((gene, gene, float(score), go_term))
+    score_df = pd.DataFrame(score_tup, columns=['', 'GeneID', 'Rankscore', 'GroupID'])
     score_df.to_csv(os.path.join(path_to_file, 'gene_feature_data.txt'), sep = '\t', index=False)
     sample_data = pd.read_csv(os.path.join(path_to_file, 'samples.table'), delimiter= '\t', index_col=0)
     by_sample = sample_data.transpose()
@@ -70,16 +70,16 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     new_cell_list = new_gmatrix_df.index.values
     cell_data = []
     for cell in new_cell_list:
+        match_all = False
         condition = cell.split(split_on)[pos]
+        tracking_id = cell
         if condition == 'PNX':
             day = 4
         else:
             day = 0
         for s_cell in by_sample.columns.values:
-
             if cell.split(split_on)[1] == s_cell.split('_')[1]:
-                tracking_id = cell
-                total_mass = by_sample[s_cell][0]
+                total_mass = by_sample[s_cell][1]
                 for m_cell in by_cell_map.columns.values:
                     if cell.split(split_on)[1] in m_cell:
                         print cell, m_cell, '2'
@@ -88,6 +88,7 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
                         per_mapped = by_cell_map[m_cell][4]
                         for c_num in l_data.columns.values:
                             if int(c_num) == int(cell.split(split_on)[1].strip('C')):
+                                match_all = True
                                 if condition == 'PNX':
                                     loading = l_data[c_num][1]
                                 else:
@@ -96,9 +97,10 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
                                     single_cell = 'yes'
                                 else:
                                     single_cell = 'no'
-                                c_data_tup = (tracking_id,total_mass,input_mass,per_mapped,condition,day,single_cell)
-                                print c_data_tup
-                                cell_data.append(c_data_tup)
+        if match_all:
+            c_data_tup = (tracking_id,total_mass,input_mass,per_mapped,condition,day,single_cell)
+            print c_data_tup
+            cell_data.append(c_data_tup)
     cell_data_df = pd.DataFrame(cell_data, columns=['tracking_id','total_mass','input_mass','per_mapped','condition','day','single_cell'])
     cell_data_df.to_csv(os.path.join(path_to_file, 'cell_feature_data.txt'), sep = '\t', index=False)
 
