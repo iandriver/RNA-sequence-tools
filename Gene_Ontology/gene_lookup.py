@@ -7,7 +7,7 @@ from sets import Set
 import json
 from pprint import pprint
 import pandas as pd
-
+from collections import OrderedDict
 #Basic script for fetching gene ontology from Entrez
 #Starting with common gene names in a list 1) get_gene takes the list and returns gene ids that are suitable
 #for Entrez. 2) retrieve_annotation takes a gene id list and returns the gene ontology in a dict of dicts
@@ -16,17 +16,19 @@ import pandas as pd
 Entrez.email = "ian.driver@ucsf.edu"
 
 #the file path where gene list will be and where new list will output
-path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_lung'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
 #where the json gene ontology database is stored
 path_to_gojson ="/Volumes/Seq_data"
 #name of file containing gene
-gene_file_source = 'lung_norm_cpm_outlier_by_gene.p'
+gene_file_source = 'fpkm_pdgfra_n2_outlier_gene_list.p'
 #if you want to update the database change to True
 update =False
 
 #will only take pickle files and .txt singular files (has [GeneID] column)
-if gene_file_soure[-1] != 'p':
+if gene_file_source[-1] != 'p':
     singular = True
+else:
+    singular = False
 
 def return_pickle(path_to_file, file):
     fpgenelist = open(os.path.join(path_to_file,file), 'rb')
@@ -35,7 +37,7 @@ def return_pickle(path_to_file, file):
     fpgenelist.close()
 
 
-def singular_gene_list(path=path_to_file, file ):
+def singular_gene_list(path_to_file, file):
   gene_df = pd.read_csv(os.path.join(path_to_file,file), delimiter= '\t')
   gene_list = gene_df['GeneID'].tolist()
   final_list = []
@@ -76,7 +78,7 @@ def get_gene(gene_list):
 #retrieve_annotation takes a list of gene IDs and returns all of the associated
 #Gene Ontology terms as a dictionary
 def retrieve_annotation(id_list):
-  goterms = {}
+  goterms = OrderedDict()
   handle = Entrez.efetch(db='gene', id=",".join(id_list), retype='gb', retmode='xml')
   all_records = Entrez.parse(handle, 'genebank')
   for record in all_records:
@@ -100,7 +102,7 @@ def retrieve_annotation(id_list):
             #there are three gene ontology types in NCBI gene database:
             #Function, Process, and Component.  The gotype dict will
             #store each go term under its type
-            gotype= {}
+            gotype= OrderedDict()
             for i3, k3 in k2.items():
               if i3 == 'Gene-commentary_label':
                 gotype_name = k3
@@ -176,13 +178,29 @@ if update:
     update_json(g_list)
 with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
     go_json = json.load(gg2)
-go_search_term =[('Component', 'integral component of membrane'), ('Function', 'cytokine activity'),
+go_search_term =[('Process', 'lung alveolus development'),
+                ('Process', 'lung morphogenesis'),
+                ('Process', 'lung development'),
+                ('Component', 'alveolar lamellar body'),
+                ('Component', 'alveolar lamellar body membrane'),
+                ('Function', 'cytokine activity'),
+                ('Component', 'integral component of membrane'),
+                ('Component', 'external side of plasma membrane'),
                 ('Function', 'sequence-specific DNA binding transcription factor activity'),
-                ('Process','positive regulation of fibroblast migration'),('Process','tumor necrosis factor-mediated signaling pathway'),
-                ('Process', 'lung morphogenesis'), ('Process', 'lung development'), ('Process', 'liver development'),
-                 ('Process', 'kidney development'), ('Component', 'extracellular matrix'), ('Function','extracellular matrix structural constituent')]
+                ('Process','positive regulation of fibroblast migration'),
+                ('Process', 'positive regulation of cell migration'),
+                ('Process','tumor necrosis factor-mediated signaling pathway'),
+                ('Process', 'negative regulation of inflammatory response'),
+                ('Component', 'extracellular matrix'),
+                ('Process', 'lipid storage'),
+                ('Process', 'liver development'),
+                ('Process', 'kidney development'),
+                ('Function','extracellular matrix structural constituent'),
+                ('Process', 'regulation of MAPK cascade'),
+                ('Process', 'negative regulation of apoptotic process'),
+                ('Process', 'negative regulation of neuron apoptotic process')]
 term_index =['Function', 'Process', 'Component']
-search_term_dict ={}
+search_term_dict =OrderedDict()
 search_term_list = []
 search_term_dict['GeneID'] = []
 search_term_dict['GroupID'] = []

@@ -2,7 +2,7 @@ import os
 import cPickle as pickle
 import numpy as np
 import pandas as pd
-
+from collections import OrderedDict
 
 def delete_cells(by_cell, cell_list, del_list):
   to_delete1 =[]
@@ -96,13 +96,13 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
-path_to_file = '/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
-base_name ='fpkm_cuff_pdgfra2'
+path_to_file = '/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+base_name ='fpkm_cuff_spc2'
 with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   data = pickle.load(fp)
   gen_list = data.index.tolist()
   cell_list = [x.strip('_0') for x in list(data.columns.values)]
-  path_to_align=os.path.join(path_to_file,'results_pdgfra2_all_align.p')
+  path_to_align=os.path.join(path_to_file,'results_spc2_all_align.p')
   del_list=filter_by_mapping(path_to_align)
 
   npdata = np.array(data.values, dtype='f')
@@ -113,8 +113,8 @@ with open(os.path.join(path_to_file,'cuff_fpkm_table.p'), 'rb') as fp:
   by_cell = new_by_gene.transpose()
   outlier_cell_list, outlier_by_cell = filter_cells_sd(by_cell, rem_cell_list)
   final_by_gene = outlier_by_cell.transpose()
-  outlier_fpkm_dict = {}
-  bulk_ctrl_dict = {}
+  outlier_fpkm_dict = OrderedDict()
+  bulk_ctrl_dict = OrderedDict()
   filter_on_lane = True
   if filter_on_lane:
     for i, l in enumerate(outlier_by_cell):
