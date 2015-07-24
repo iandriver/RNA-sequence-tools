@@ -17,7 +17,7 @@ def delete_cells(by_cell, cell_list, del_list):
     return cell_list, n_by_cell
 
 
-def filter_by_mapping(path_to_align, cutoff_per_map = 150000):
+def filter_by_mapping(path_to_align, cutoff_per_map = 100000):
     c_to_del =[]
     with open(path_to_align, 'rb') as fp:
         a_data = pickle.load(fp)
@@ -26,13 +26,13 @@ def filter_by_mapping(path_to_align, cutoff_per_map = 150000):
         c_to_del = ind_list.index.values
     return c_to_del
 
-def filter_cells_sd(by_cell, cell_list, sd=2.8):
+def filter_cells_sd(by_cell, cell_list, sd=3.8):
     average_gene_exp = []
     to_delete= []
     for cell_name, genes in zip(cell_list,by_cell):
         gen_exp = (genes >= 1).sum()
         #if the cell doesn't express at least 500 genes just delete it and exclude from average
-        if gen_exp <=500:
+        if gen_exp <=1000:
             to_delete.append(cell_list.index(cell_name))
         else:
             average_gene_exp.append(gen_exp)
@@ -99,23 +99,15 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
-path_to_file = '/Volumes/Seq_data/cuffnorm_spc_d0_4_7'
+path_to_file = '/Volumes/Seq_data/cuffnorm_combined_spc'
 file_name = 'genes.fpkm_table'
-base_name ='spc_d0_4_7'
+base_name ='combined_spc'
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
 gen_list = data.index.tolist()
-cell_list1 = [x[0:-2] for x in list(data.columns.values)]
-cell_list = []
-for ci in cell_list1:
-    if ci[-1] == '_':
-        cell_list.append(ci+'2')
-    else:
-        cell_list.append(ci)
+cell_list = list(data.columns.values)
 
-data.columns=cell_list
-print data
-path_to_align=os.path.join(path_to_file,'results_spc_d0_4_7_align.p')
+path_to_align=os.path.join(path_to_file,'results_combined_spc_align.p')
 del_list=filter_by_mapping(path_to_align)
 print del_list, 'del'
 npdata = np.array(data.values, dtype='f')
@@ -129,7 +121,7 @@ final_by_gene = outlier_by_cell.transpose()
 outlier_fpkm_dict = OrderedDict()
 bulk_ctrl_dict = OrderedDict()
 filter_on_lane = False
-bulk = False
+bulk = True
 if filter_on_lane:
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')
@@ -161,7 +153,7 @@ else:
     for i, l in enumerate(outlier_by_cell):
         if bulk:
             cell_name = outlier_cell_list[i]
-            if 'bulk' in cell_name:
+            if 'bulk' in cell_name or '+' in cell_name or 'neg' in cell_name or '-' in cell_name:
                 bulk_ctrl_dict[cell_name] = [float(lx) for lx in l]
             else:
                 outlier_fpkm_dict[cell_name] = [float(lx) for lx in l]

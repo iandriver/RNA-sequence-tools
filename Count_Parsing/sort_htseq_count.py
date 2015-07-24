@@ -15,15 +15,9 @@ http://broadinstitute.github.io/picard/
 The 3' to 5' bias of each sample is collected as a matrix file for easy plotting.
 '''
 #list of file paths with mapped hits
-pats = ['/Volumes/Seq_data/results_scler_ht280']
-
+pats = ['/Volumes/Seq_data/results_01272015', '/Volumes/Seq_data/results_spc2_n2']
 #output path
-path = '/Volumes/Seq_data/chapman_countbased'
-
-#basename for ouput files
-basename = 'chapman_hu_all'
-path_to_refflat = '/Volumes/Seq_data/refFlat.txt.gz'
-path_to_gtf = '/Volumes/Seq_data/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
+path = '/Volumes/Seq_data'
 
 #initialize dictonaries for collected output
 fpkm_matrix_dict_g ={}
@@ -52,23 +46,6 @@ for p in pats:
                 print(out)
             else:
                 print sort_out+'.bam already exists'
-                process = subprocess.Popen(sam_sort_call, stdout=subprocess.PIPE, shell=True)
-                out, err = process.communicate()
-                pass
-            #format htseq-count command to generate raw counts from sorted accepted hits
-            hts_out = os.path.join(root,cname+'_htseqcount.txt')
-            if not os.path.isfile(hts_out):
-                htseq_count_call = 'htseq-count -f bam '+sort_out+'.bam'+' '+path_to_gtf+' > '+hts_out
-                print htseq_count_call
-                process = subprocess.Popen(htseq_count_call, stdout=subprocess.PIPE, shell=True)
-                out, err = process.communicate()
-                print(out)
-            else:
-                print hts_out+' already exists'
-                htseq_count_call = 'htseq-count -f bam '+sort_out+'.bam'+' '+path_to_gtf+' > '+hts_out
-                print htseq_count_call
-                process = subprocess.Popen(htseq_count_call, stdout=subprocess.PIPE, shell=True)
-                out, err = process.communicate()
                 pass
             #run picard_fixmate to clean up paired end reads in accepted_hits.bam (sorted)
             picard_fixmate_out = os.path.join(root,sort_out.strip('.bam')+'_FM.bam')
@@ -80,26 +57,30 @@ for p in pats:
                 print(out)
             else:
                 print picard_fixmate_out+' already exists'
-                picard_fixmate_call = 'java -Xmx3g -jar /Users/idriver/picard/dist/picard.jar FixMateInformation INPUT='+sort_out+'.bam OUTPUT='+picard_fixmate_out+' AS=true SORT_ORDER=coordinate'
-                print picard_fixmate_call
-                process = subprocess.Popen(picard_fixmate_call, stdout=subprocess.PIPE, shell=True)
+            #format htseq-count command to generate raw counts from sorted accepted hits
+            gf = '/Volumes/Seq_data/genes_E_RS.gtf'
+            hts_out = os.path.join(root,cname+'_htseqcount.txt')
+            htseq_count_call = 'htseq-count -f bam '+picard_fixmate_out+' '+gf+' > '+hts_out
+            print htseq_count_call
+            if not os.path.isfile(hts_out):
+                process = subprocess.Popen(htseq_count_call, stdout=subprocess.PIPE, shell=True)
                 out, err = process.communicate()
                 print(out)
+            else:
+                print('htseq-count already exists')
+
             #run picard CollectRnaSeqMetrics (http://broadinstitute.github.io/picard/command-line-overview.html) and generate matrix of 3' to 5' bias (norm_read_dict)
             picard_rnaseqmetric_out = os.path.join(root,sort_out.strip('sorted.bam')+'RNA_metric.txt')
             picard_rnaseqchart_out = os.path.join(root,sort_out.strip('sorted.bam')+'RNA_metric.pdf')
+            picard_seqmetric_call = 'java -Xmx3g -jar /Users/idriver/picard/dist/picard.jar CollectRnaSeqMetrics REF_FLAT=/Volumes/Seq_data/refFlat_mm10ERS.txt.gz STRAND_SPECIFICITY=NONE MINIMUM_LENGTH=70 CHART_OUTPUT='+picard_rnaseqchart_out+' INPUT='+picard_fixmate_out+' OUTPUT='+picard_rnaseqmetric_out
+            print picard_seqmetric_call
             if not os.path.isfile(picard_rnaseqchart_out):
-                picard_seqmetric_call = 'java -Xmx3g -jar /Users/idriver/picard/dist/picard.jar CollectRnaSeqMetrics REF_FLAT='+path_to_refflat+' STRAND_SPECIFICITY=NONE MINIMUM_LENGTH=70 CHART_OUTPUT='+picard_rnaseqchart_out+' INPUT='+picard_fixmate_out+' OUTPUT='+picard_rnaseqmetric_out
-                print picard_seqmetric_call
                 process = subprocess.Popen(picard_seqmetric_call, stdout=subprocess.PIPE, shell=True)
                 out, err = process.communicate()
                 print(out)
             else:
-                print picard_rnaseqchart_out+' already exists'
-                picard_seqmetric_call = 'java -Xmx3g -jar /Users/idriver/picard/dist/picard.jar CollectRnaSeqMetrics REF_FLAT='+path_to_refflat+' STRAND_SPECIFICITY=NONE MINIMUM_LENGTH=70 CHART_OUTPUT='+picard_rnaseqchart_out+' INPUT='+picard_fixmate_out+' OUTPUT='+picard_rnaseqmetric_out
-                print picard_seqmetric_call
-                process = subprocess.Popen(picard_seqmetric_call, stdout=subprocess.PIPE, shell=True)
-                out, err = process.communicate()
+                print('picard metric already exists')
+                
             g_counts = []
             with open(hts_out, mode='r') as infile:
                 hts_tab = csv.reader(infile, delimiter = '\t')
@@ -140,11 +121,11 @@ print index3
 
 #form pandas dataframe of each and save as tab delimited file
 count_df = pd.DataFrame(count_dict, index = gene_list)
-count_df.to_csv(os.path.join(path,basename+'_count_table.txt'), sep = '\t')
-with open(os.path.join(path,'htseq_count_'+basename+'.p'), 'wb') as fp1:
+count_df.to_csv(os.path.join(path,'combined_spc_count_table.txt'), sep = '\t')
+with open(os.path.join(path,'htseq_count_combined_spc.p'), 'wb') as fp1:
     pickle.dump(count_df, fp1)
 pic_stats_df = pd.DataFrame(picard_stats_dict, index = index1)
-pic_stats_df.to_csv(os.path.join(path,basename+'_picard_stats.txt'), sep = '\t')
+pic_stats_df.to_csv(os.path.join(path,'combined_spc_picard_stats.txt'), sep = '\t')
 norm_read_df = pd.DataFrame(norm_read_dict, index = index3)
-norm_read_df.to_csv(os.path.join(path,basename+'_read_bias.txt'), sep = '\t')
+norm_read_df.to_csv(os.path.join(path,'combined_spc_read_bias.txt'), sep = '\t')
 pd.DataFrame.plot(norm_read_df)

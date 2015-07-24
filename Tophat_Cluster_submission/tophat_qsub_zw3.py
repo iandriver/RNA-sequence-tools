@@ -58,7 +58,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #paths to raw reads and annotation and index of genome
-path = '/netapp/home/idriver/chapmanh'
+path = '/netapp/home/idriver/werbz'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
 index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
@@ -66,16 +66,17 @@ index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
 #this next section parses the file names so that the paired end reads are in order and determines the name of the output file
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
+run_1 = True
 for root, dirs, files in os.walk(path):
-    if root.split('/')[-1]=='chapmanh':
+    if root.split('/')[-1]=='werbz':
         for lane in dirs:
-            samp_file_name = lane.split('_')[-1].split('-')
-            result_name = '_'.join(['results',samp_file_name[2],samp_file_name[3]])
-            call('mkdir -p /netapp/home/idriver/%s' % result_name, shell=True)
-    elif dirs == ['fastqc']:
-        n = root.strip('/').split('/')
+            samp_file_name = 'results_run1_lib'+lane.split('-')[-1][-1]
+            call('mkdir -p /netapp/home/idriver/%s' % samp_file_name, shell=True)
+    elif dirs == []:
+        n = root.strip('/').split('/')[-1]
         out= '${TMPDIR}'
-        name = '_'.join([n[-1].split('-')[1],n[-1].split('-')[2],n[-1].split('-')[-1]])
+        name = 'run'+n
+        result_file_name = '_'.join(['results',name.split('_')[0],name.split('_')[1]])
         data_file = root
         result_file = os.path.join(out,name)
         input_files=''
@@ -107,7 +108,7 @@ for root, dirs, files in os.walk(path):
                 final_files = sort_num[0]+' '+sort_num[1].strip(',')
             except IndexError:
                 print 'Incomplete File: '+name
-        tophat_cmd = 'tophat2 -p 8 -r 220 -a 10 --mate-std-dev 80 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_hg19_ERCC_2/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
+        tophat_cmd = 'tophat2 -p 8 -r 170 -a 10 --mate-std-dev 80 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_hg19_ERCC_2/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -116,7 +117,7 @@ for root, dirs, files in os.walk(path):
 #!/bin/sh
 #$ -l arch=linux-x64
 #$ -S /bin/bash
-#$ -o /netapp/home/idriver/%(result_name)s
+#$ -o /netapp/home/idriver/%(result_file_name)s
 #$ -e /netapp/home/idriver/error_spc
 #$ -cwd
 #$ -r y
@@ -141,17 +142,17 @@ export TMPDIR=/scratch
 echo $TMPDIR
 cd $TMPDIR
 mkdir %(name)s
-mkdir -p /netapp/home/idriver/%(result_name)s/%(name)s
+mkdir -p /netapp/home/idriver/%(result_file_name)s/%(name)s
 %(tophat_cmd)s
 %(cufflinks_cmd)s
 %(cuffquant_cmd)s
 # Copy the results back to the project directory:
 cd $TMPDIR
-cp -r %(name)s/* /netapp/home/idriver/%(result_name)s/%(name)s
+cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if name != 'DK_ht280_A1':
+        if name != 'run1_lib1_A1':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd
@@ -164,3 +165,4 @@ date
             process = subprocess.Popen('echo %d > jobids' % jobid, stdout=subprocess.PIPE, shell = True)
             out, err = process.communicate()
             print(out)
+            run_1 = False
