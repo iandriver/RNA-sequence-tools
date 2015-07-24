@@ -7,97 +7,117 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 from operator import itemgetter
 from matplotlib.ticker import LinearLocator
-import networkx as nx
-import plotly.plotly as py
-from plotly.graph_objs import *
-import plotly.tools as tls
 import itertools
+from graph_tool.all import *
 
-#plotly sign in information
-py.sign_in('driver.ian', '0oql1n8y2r')
+#***fill in these variables***
+
+
+
 #base path to pickle files with fpkm or count matrix
-path_to_file ='/Volumes/Seq_data/counts_sheppard_all/cpm_norm_kidney'
-start_file_name = 'kidney_norm_cpm'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
+#for labeling all output files
+start_file_name = 'fpkm_pdgfra_n2'
 
-#if new cell pickle files need to be loaded
-load_new_cells = True
-#if you want to load a new signifcant correlation file
-load_new_sig = True
-#if you want save a new significant correlation file (pickle)
-save_new_sig = False
-#if you want to run a new correlation (can take a while)
+#gene to search
+term_to_search =raw_input('Enter gene name to search correlation:')
+
+#if you need to run a new correlation (can take a while)
 run_corr = False
 
-cmaps = {'Sequential':['Blues', 'BuGn', 'BuPu',
-'GnBu', 'Greens', 'Greys', 'Oranges', 'OrRd',
-'PuBu', 'PuBuGn', 'PuRd', 'Purples', 'RdPu',
-'Reds', 'YlGn', 'YlGnBu', 'YlOrBr', 'YlOrRd'],
-'Sequential (2)': ['afmhot', 'autumn', 'bone', 'cool', 'copper',
-'gist_heat', 'gray', 'hot', 'pink',
-'spring', 'summer', 'winter'],
-'Diverging':['BrBG', 'bwr', 'coolwarm', 'PiYG', 'PRGn', 'PuOr',
-'RdBu', 'RdGy', 'RdYlBu', 'RdYlGn', 'Spectral',
-'seismic'],
-'Qualitative':['Accent', 'Dark2', 'Paired', 'Pastel1',
-'Pastel2', 'Set1', 'Set2', 'Set3'],
-'Miscellaneous':['gist_earth', 'terrain', 'ocean', 'gist_stern',
-'brg', 'CMRmap', 'cubehelix',
-'gnuplot', 'gnuplot2', 'gist_ncar',
-'nipy_spectral', 'jet', 'rainbow',
-'gist_rainbow', 'hsv', 'flag', 'prism']}
+#difine the threshold for significant correlation (0-1 one being perfect correlation)
+sig_threshold =0.5
+#define correlation method options are: 'pearson', 'kendall', 'spearman'
+method_name = 'spearman'
+#Minimum number of observations required per pair of columns to have a valid result. Currently only available for pearson and spearman correlation.
+min_period = 3
 
-if load_new_cells:
-    fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
-    by_cell = pickle.load(fpbcell)
-    fpbcell.close()
-    fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
-    cell_list = pickle.load(fpcelllist)
-    fpcelllist.close()
-    fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
-    by_gene = pickle.load(fpbgene)
-    fpbgene.close()
-    fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
-    gene_list = pickle.load(fpgenelist)
-    fpgenelist.close()
+#if you want the correlation plot to be sorted by expression of the searched gene
+plot_sort = True
+#if you want the plot to be plotted on log2 scale
+plot_log = False
+#if you want save a new significant correlation file (pickle)
+save_new_sig = True
+
+#can rank genes by category separation (single gene clustering) if true define categories
+#in find_gen_rank function
+rank = False
+#***only edit find_gen_rank categories***
+
+fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
+by_cell = pickle.load(fpbcell)
+fpbcell.close()
+fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
+cell_list = pickle.load(fpcelllist)
+fpcelllist.close()
+fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
+by_gene = pickle.load(fpbgene)
+fpbgene.close()
+fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
+gene_list = pickle.load(fpgenelist)
+fpgenelist.close()
 
 
-    df_by_gene = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
-    df_by_cell = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
-    cols = df_by_cell.shape[0]
-    rows = df_by_cell.shape[1]
+
+#name of file containing gene
+gene_file_source = 'go_search_genes_lung_all.txt'
+df_by_gene1 = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
+df_by_cell1 = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
+
+def make_new_matrix(org_matrix_by_cell, gene_list_file):
+    split_on='_'
+    gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
+    gene_list = gene_df['GeneID'].tolist()
+    group_list = gene_df['GroupID'].tolist()
+    gmatrix_df = org_matrix_by_cell[gene_list]
+    cmatrix_df = gmatrix_df.transpose()
+    cell_list1 = []
+    for cell in cmatrix_df.columns.values:
+        if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
+            if cell.split(split_on)[2][0] =='C':
+                print cell, 'cell'
+                cell_list1.append(cell)
+    new_cmatrix_df = cmatrix_df[cell_list1]
+    new_gmatrix_df = new_cmatrix_df.transpose()
+    return new_cmatrix_df, new_gmatrix_df
+
+df_by_cell, df_by_gene = make_new_matrix(df_by_gene1, gene_file_source)
 
 #run correlation matrix and save only those above threshold
 if run_corr:
-    corr_by_gene = df_by_gene.corr(method='spearman', min_periods=3)
+    if method_name != 'kendall':
+        corr_by_gene = df_by_gene.corr(method=method_name, min_periods=min_period)
+    else:
+        corr_by_gene = df_by_gene.corr(method=method_name)
     corr_by_cell = df_by_cell.corr()
 
     cor = corr_by_gene
     cor.loc[:,:] =  np.tril(cor.values, k=-1)
     cor = cor.stack()
-    sig_corr_pos = cor[cor >=0.5]
-    sig_corr_neg = cor[cor <=-0.5]
+    sig_corr_pos = cor[cor >=sig_threshold]
+    sig_corr_neg = cor[cor <=(sig_threshold*-1)]
 
-    with open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'wb') as fp:
+    with open(os.path.join(path_to_file,'gene_correlations_sig_neg_'+method_name+'.p'), 'wb') as fp:
         pickle.dump(sig_corr_neg, fp)
-    with open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'wb') as fp0:
+    with open(os.path.join(path_to_file,'gene_correlations_sig_pos_'+method_name+'.p'), 'wb') as fp0:
         pickle.dump(sig_corr_pos, fp0)
     with open(os.path.join(path_to_file,'by_gene_corr.p'), 'wb') as fp1:
         pickle.dump(corr_by_gene, fp1)
     with open(os.path.join(path_to_file,'by_cell_corr.p'), 'wb') as fp2:
         pickle.dump(corr_by_cell, fp2)
 
-#load or save significant correlations as needed
-if load_new_sig:
-    corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_spearman.p'), 'rb')
-    corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_spearman.p'), 'rb')
-    cor_pos = pickle.load(corr_by_gene_pos)
-    cor_neg = pickle.load(corr_by_gene_neg)
-    cor_pos_df = pd.DataFrame(cor_pos)
-    cor_neg_df = pd.DataFrame(cor_neg)
-    sig_corr = cor_pos_df.append(cor_neg_df)
-    sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
+
+corr_by_gene_pos =  open(os.path.join(path_to_file,'gene_correlations_sig_pos_'+method_name+'.p'), 'rb')
+corr_by_gene_neg =  open(os.path.join(path_to_file,'gene_correlations_sig_neg_'+method_name+'.p'), 'rb')
+cor_pos = pickle.load(corr_by_gene_pos)
+cor_neg = pickle.load(corr_by_gene_neg)
+cor_pos_df = pd.DataFrame(cor_pos)
+cor_neg_df = pd.DataFrame(cor_neg)
+sig_corr = cor_pos_df.append(cor_neg_df)
+sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
+
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file,'kidney_counts_corr_sig_spearman.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file, start_file_name.split('_')[0]+'_counts_corr_sig_'+method_name+'.txt'), sep = '\t')
 
 def find_gen_rank(g, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
 
@@ -113,14 +133,12 @@ def find_gen_rank(g, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
     res_score = float(score1)/float(tot)
     return "%.2f" % res_score
 
-#gene to search
-term_to_search ='Sparc'
 
 #corr_plot finds and plots all correlated genes, log turns on log scale, sort plots the genes in the rank order of the gene searched
-def corr_plot(term_to_search, log=False, sort=False):
+def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
+    plt.clf()
     corr_tup = [(term_to_search, 1)]
     neg = True
-    rank = False
     fig, ax = plt.subplots()
     marker = itertools.cycle(('+', 'o', '*'))
     linestyles = itertools.cycle(('--', '-.', '-', ':'))
@@ -175,12 +193,19 @@ def corr_plot(term_to_search, log=False, sort=False):
         ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
     fig = plt.gcf()
     fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
+    plt.savefig(os.path.join(path_to_file, start_file_name+'_corr_with_'+term_to_search), bbox_inches='tight')
+
     plt.show()
+
 
 #network plot plots correlated genes as network
 def network_plot(term_to_search):
-    MG_genes=nx.DiGraph()
-    MG_genes.add_node(term_to_search, size=10, color='red')
+    g = Graph()
+    v_gene_name = g.new_vertex_property("str")
+    e_dist = g.new_edge_property("float")
+    v = g.add_vertex()
+    v_gene_name[v] = term_to_search
+    vlist = [v]
     network_tup = []
     neg = True
     for index, row in sig_corrs.iterrows():
@@ -196,12 +221,12 @@ def network_plot(term_to_search):
         network_tup.sort(key=itemgetter(2), reverse=True)
         labels= {term_to_search:term_to_search}
         for n1, n2, w in network_tup:
-            MG_genes.add_node(n2, size=10, label=n2, color='blue')
-            labels[n2]=n2
-        MG_genes.add_weighted_edges_from(network_tup)
-        pos = nx.spring_layout(MG_genes)
-        nx.draw(MG_genes, pos, with_labels=True, node_color='#A0CBE2')
-        plt.show()
+            v = g.add_vertex()
+            v_age[v] = n2
+            e = g.add_edge(v, vlist[0])
+            e_dist[e] = w
+            vlist.append(v)
+        graph_draw(g,sfdp_layout(g), output='graphnet.pdf')
 
 corr_plot(term_to_search, sort=True)
 
