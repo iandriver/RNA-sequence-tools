@@ -14,9 +14,9 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file ='/Volumes/Seq_data/cuffnorm_chapman_hu_all'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
 #for labeling all output files
-start_file_name = 'fpkm_chapman_hu_all'
+start_file_name = 'fpkm_pdgfra_n2'
 
 #gene to search
 term_to_search =raw_input('Enter gene name to search correlation:')
@@ -57,10 +57,30 @@ gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
 
 
-df_by_gene = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
-df_by_cell = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
-cols = df_by_cell.shape[0]
-rows = df_by_cell.shape[1]
+
+#name of file containing gene
+gene_file_source = 'go_search_genes_lung_all.txt'
+df_by_gene1 = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
+df_by_cell1 = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
+
+def make_new_matrix(org_matrix_by_cell, gene_list_file):
+    split_on='_'
+    gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
+    gene_list = gene_df['GeneID'].tolist()
+    group_list = gene_df['GroupID'].tolist()
+    gmatrix_df = org_matrix_by_cell[gene_list]
+    cmatrix_df = gmatrix_df.transpose()
+    cell_list1 = []
+    for cell in cmatrix_df.columns.values:
+        if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
+            if cell.split(split_on)[2][0] =='C':
+                print cell, 'cell'
+                cell_list1.append(cell)
+    new_cmatrix_df = cmatrix_df[cell_list1]
+    new_gmatrix_df = new_cmatrix_df.transpose()
+    return new_cmatrix_df, new_gmatrix_df
+
+df_by_cell, df_by_gene = make_new_matrix(df_by_gene1, gene_file_source)
 
 #run correlation matrix and save only those above threshold
 if run_corr:
@@ -138,7 +158,8 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
         print c
     to_plot = [x[0] for x in corr_tup]
     sorted_df = df_by_gene.sort([term_to_search])
-    log2_df = np.log2(df_by_gene[to_plot])
+    print to_plot
+    log2_df = np.log2(df_by_cell[to_plot])
     sorted_log2_df=np.log2(sorted_df[to_plot])
     ylabel='Counts'
     if sort and log:
@@ -173,7 +194,8 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
     fig = plt.gcf()
     fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
     plt.savefig(os.path.join(path_to_file, start_file_name+'_corr_with_'+term_to_search), bbox_inches='tight')
-    plt.close(fig)
+
+    plt.show()
 
 
 
