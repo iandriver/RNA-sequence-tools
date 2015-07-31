@@ -5,6 +5,7 @@ import scipy
 import os
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
+import matplotlib.figure as pltfig
 from operator import itemgetter
 from matplotlib.ticker import LinearLocator
 import itertools
@@ -15,9 +16,9 @@ from graph_tool.all import *
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
+path_to_file = '/Volumes/Seq_data/cuffnorm_spc_d0_4_7'
 #for labeling all output files
-start_file_name = 'fpkm_pdgfra_n2'
+start_file_name = 'spc_d0_4_7'
 
 #gene to search
 term_to_search =raw_input('Enter gene name to search correlation:')
@@ -75,7 +76,6 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     for cell in cmatrix_df.columns.values:
         if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
             if cell.split(split_on)[2][0] =='C':
-                print cell, 'cell'
                 cell_list1.append(cell)
     new_cmatrix_df = cmatrix_df[cell_list1]
     new_gmatrix_df = new_cmatrix_df.transpose()
@@ -201,8 +201,8 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
 #network plot plots correlated genes as network
 def network_plot(term_to_search):
     g = Graph()
-    v_gene_name = g.new_vertex_property("str")
-    e_dist = g.new_edge_property("float")
+    v_gene_name = g.new_vertex_property("string")
+    e_dist = g.new_edge_property("double")
     v = g.add_vertex()
     v_gene_name[v] = term_to_search
     vlist = [v]
@@ -222,13 +222,13 @@ def network_plot(term_to_search):
         labels= {term_to_search:term_to_search}
         for n1, n2, w in network_tup:
             v = g.add_vertex()
-            v_age[v] = n2
+            v_gene_name[v] = n2
             e = g.add_edge(v, vlist[0])
             e_dist[e] = w
             vlist.append(v)
-        graph_draw(g,sfdp_layout(g), output='graphnet.pdf')
+        graph_draw(g,sfdp_layout(g), mplfig= pltfig.Figure(), output='graphnet.pdf')
 
-corr_plot(term_to_search, sort=True)
-
+#corr_plot(term_to_search, sort=True)
+network_plot(term_to_search)
 corr_by_gene_pos.close()
 corr_by_gene_neg.close()
