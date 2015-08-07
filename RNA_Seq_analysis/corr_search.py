@@ -14,20 +14,20 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2/cuffnorm_pdgfra_1_and_2'
 #for labeling all output files
-start_file_name = 'fpkm_pdgfra_n2'
+start_file_name = 'pdgra_all_low_hi'
 
 #gene to search
 term_to_search =raw_input('Enter gene name to search correlation:')
 
 #if you need to run a new correlation (can take a while)
-run_corr = False
+run_corr = True
 
 #difine the threshold for significant correlation (0-1 one being perfect correlation)
 sig_threshold =0.5
 #define correlation method options are: 'pearson', 'kendall', 'spearman'
-method_name = 'spearman'
+method_name = 'pearson'
 #Minimum number of observations required per pair of columns to have a valid result. Currently only available for pearson and spearman correlation.
 min_period = 3
 
@@ -38,9 +38,17 @@ plot_log = False
 #if you want save a new significant correlation file (pickle)
 save_new_sig = True
 
+#if new matrix term file exists to update from and you want that gene list to be used for correlations
+make_go_matrix = True
+#name of file containing gene list (must have genes under column 'GeneID')
+gene_file_source = 'go_search_genes_lung_all.txt'
+#set inclusion/exclusion criteria in make_new_matrix function prior to activating
+exclude =False
+
 #can rank genes by category separation (single gene clustering) if true define categories
 #in find_gen_rank function
 rank = False
+
 #***only edit find_gen_rank categories***
 
 fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
@@ -58,8 +66,7 @@ fpgenelist.close()
 
 
 
-#name of file containing gene
-gene_file_source = 'go_search_genes_lung_all.txt'
+
 df_by_gene1 = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
 df_by_cell1 = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
 
@@ -72,15 +79,20 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     cmatrix_df = gmatrix_df.transpose()
     cell_list1 = []
     for cell in cmatrix_df.columns.values:
-        if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
-            if cell.split(split_on)[2][0] =='C':
-                print cell, 'cell'
-                cell_list1.append(cell)
+        if exclude:
+            if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
+                if cell.split(split_on)[2][0] =='C':
+                    print cell, 'cell'
+                    cell_list1.append(cell)
+        else:
+            cell_list1.append(cell)
     new_cmatrix_df = cmatrix_df[cell_list1]
     new_gmatrix_df = new_cmatrix_df.transpose()
     return new_cmatrix_df, new_gmatrix_df
-
-df_by_cell, df_by_gene = make_new_matrix(df_by_gene1, gene_file_source)
+if make_go_matrix:
+    df_by_cell, df_by_gene = make_new_matrix(df_by_gene1, gene_file_source)
+else:
+    df_by_cell, df_by_gene = df_by_cell1, df_by_gene1
 
 #run correlation matrix and save only those above threshold
 if run_corr:
@@ -158,8 +170,7 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
         print c
     to_plot = [x[0] for x in corr_tup]
     sorted_df = df_by_gene.sort([term_to_search])
-    print to_plot
-    log2_df = np.log2(df_by_cell[to_plot])
+    log2_df = np.log2(df_by_gene[to_plot])
     sorted_log2_df=np.log2(sorted_df[to_plot])
     ylabel='Counts'
     if sort and log:
