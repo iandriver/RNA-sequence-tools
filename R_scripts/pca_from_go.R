@@ -17,3 +17,4 @@ pca_from_go <- function(exp){
 	saveRDS(exp_4, file="exp_fso_sample_clusters_resetgenes.rds")
 	anova_go <- ANOVA(exp_4)
 	saveRDS(anova_go, file="anova_goterm_reset.rds")
+}
