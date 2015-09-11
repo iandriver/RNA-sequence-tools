@@ -10,7 +10,7 @@ import seaborn as sns
 import numpy as np
 from operator import itemgetter
 
-shared_df = pd.DataFrame.from_csv('/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis/fpkm_cuff_pdgfra2_outlier_filtered.txt', sep='\t')
+shared_df = pd.DataFrame.from_csv('/Volumes/Seq_data/cuffnorm_spc_d0_4_7', sep='\t')
 shared_list = []
 for x in shared_df.index:
     shared_list.append(x.rstrip())
@@ -52,7 +52,7 @@ def sort_df_bylist(shared_list, num_to_show=50):
 
 #a list of genes to search for ranking categories (how well does expression level define categories)
 #split_on='sybol to split cell name', pos=index number of category name after split, cat_name=[list of category names]
-def find_gen_rank_one(gen_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
+def find_gen_rank_one(gen_list, split_on='_', pos=1, cat_name=['pnx', 'ctrl']):
 
     score_tup =[]
     for g in gen_list:
@@ -83,11 +83,11 @@ def find_gen_rank_one(gen_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl'])
     score_df = pd.DataFrame(score_tup, columns=['GeneID', 'Maxscore'])
     score_df.to_csv(os.path.join(path_to_file, 'sep_score_genes_all.txt'), sep = '\t', index=False)
 
-def find_gen_rank(g_list, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
+def find_gen_rank(g_list, split_on='_', pos=1, cat_name=['pnx', 'ctrl']):
     score_tup =[]
     for g in g_list:
         sorted_df = by_cell.sort([g])
-        score_on = 'd4pnx'
+        score_on = 'pnx'
         g_df = sorted_df[g]
         ranked_cells = sorted_df.index.values
         ranked_cat = [x.split(split_on)[pos] for x in ranked_cells]

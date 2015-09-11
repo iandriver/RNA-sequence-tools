@@ -17,14 +17,39 @@ def delete_cells(by_cell, cell_list, del_list):
     return cell_list, n_by_cell
 
 
-def filter_by_mapping(path_to_align, cutoff_per_map = 100000):
+def filter_by_mapping(path_to_align, cutoff_per_map = 100000, name_filter=False):
     c_to_del =[]
-    with open(path_to_align, 'rb') as fp:
-        a_data = pickle.load(fp)
-        p_mapped = a_data['mapped_L_num']
-        ind_list = p_mapped[p_mapped<cutoff_per_map]
-        c_to_del = ind_list.index.values
-    return c_to_del
+    if path_to_align[-2:] == '.p':
+        with open(path_to_align, 'rb') as fp:
+            a_data = pickle.load(fp)
+    elif path_to_align[-4:] == '.txt':
+        a_data = pd.DataFrame.from_csv(path_to_align, sep='\t')
+    p_mapped = a_data['mapped_L_num']
+    ind_list = p_mapped[p_mapped<cutoff_per_map]
+    c_to_del = ind_list.index.values
+    if name_filter:
+        new_c_to_del = []
+        for c in c_to_del:
+            c2 = c.replace('-','_')
+            nlist = c2.split('_')
+            print nlist, 'nlist'
+            if nlist[0] == 'pdgfra':
+                if nlist[2] == 'ctrl':
+                    new_c_to_del.append('Low_ctrl_'+nlist[3])
+                elif nlist[2] == 'd4pnx':
+                    new_c_to_del.append('Low_pnx_'+nlist[3])
+            else:
+                if len(nlist[0]) == 2:
+                    new_c = 'C0'+nlist[0][-1]
+                else:
+                    new_c = nlist[0]
+                if nlist[2] == 'ctrl1':
+                    new_c_to_del.append('ctrl1_'+new_c)
+                elif nlist[2] == 'pnxd4':
+                    new_c_to_del.append('pnx1_'+new_c)
+        return new_c_to_del
+    else:
+        return c_to_del
 
 def filter_cells_sd(by_cell, cell_list, sd=3.8):
     average_gene_exp = []
@@ -99,16 +124,16 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
-path_to_file = '/Volumes/Seq_data/cuffnorm_combined_spc'
+path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_combined'
 file_name = 'genes.fpkm_table'
-base_name ='combined_spc'
+base_name ='scp_sca_combined'
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
 gen_list = data.index.tolist()
-cell_list = list(data.columns.values)
+cell_list = [x.strip('_0') for x in list(data.columns.values)]
 
-path_to_align=os.path.join(path_to_file,'results_combined_spc_align.p')
-del_list=filter_by_mapping(path_to_align)
+path_to_align=os.path.join(path_to_file,'results_sca_spc_combined_align.p')
+del_list=filter_by_mapping(path_to_align, name_filter=False)
 print del_list, 'del'
 npdata = np.array(data.values, dtype='f')
 by_cell1 = npdata.transpose()
@@ -121,7 +146,7 @@ final_by_gene = outlier_by_cell.transpose()
 outlier_fpkm_dict = OrderedDict()
 bulk_ctrl_dict = OrderedDict()
 filter_on_lane = False
-bulk = True
+bulk = False
 if filter_on_lane:
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')

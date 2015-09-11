@@ -16,11 +16,11 @@ from collections import OrderedDict
 Entrez.email = "ian.driver@ucsf.edu"
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2/cuffnorm_pdgfra_1_and_2'
 #where the json gene ontology database is stored
 path_to_gojson ="/Volumes/Seq_data"
 #name of file containing gene
-gene_file_source = 'fpkm_pdgfra_n2_outlier_gene_list.p'
+gene_file_source = 'pdgra_all_low_hi_outlier_gene_list.p'
 #if you want to update the database change to True
 update =False
 
@@ -184,6 +184,7 @@ go_search_term =[('Process', 'lung alveolus development'),
                 ('Component', 'alveolar lamellar body'),
                 ('Component', 'alveolar lamellar body membrane'),
                 ('Function', 'cytokine activity'),
+                ('Function', 'NF-kappaB binding'),
                 ('Component', 'integral component of membrane'),
                 ('Component', 'external side of plasma membrane'),
                 ('Function', 'sequence-specific DNA binding transcription factor activity'),
@@ -191,13 +192,19 @@ go_search_term =[('Process', 'lung alveolus development'),
                 ('Process', 'positive regulation of cell migration'),
                 ('Process','tumor necrosis factor-mediated signaling pathway'),
                 ('Process', 'negative regulation of inflammatory response'),
+                ('Process', 'regulation of inflammatory response'),
+                ('Process', 'negative regulation of Notch signaling pathway'),
                 ('Component', 'extracellular matrix'),
                 ('Process', 'lipid storage'),
                 ('Process', 'liver development'),
                 ('Process', 'kidney development'),
                 ('Function','extracellular matrix structural constituent'),
                 ('Process', 'regulation of MAPK cascade'),
+                ('Function', 'calcium channel activity'),
                 ('Process', 'negative regulation of apoptotic process'),
+                ('Process', 'ion transmembrane transport'),
+                ('Function', 'SMAD binding'),
+                ('Function', 'transcription corepressor activity'),
                 ('Process', 'negative regulation of neuron apoptotic process')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict =OrderedDict()

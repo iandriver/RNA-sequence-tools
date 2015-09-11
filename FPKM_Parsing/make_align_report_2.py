@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict
 
 path = '/Volumes/Seq_data'
-result_file_names = ['results_01272015','results_spc2_n2']
-basename = 'combined_spc'
+result_file_names = ['results_sca_spc', 'results_spc2_n2']
+basename = 'sca_spc_combined'
 cell_list =[]
 align_dict =OrderedDict()
 align_dict['input_L_num'] = []

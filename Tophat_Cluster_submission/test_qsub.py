@@ -5,7 +5,7 @@ from subprocess import call
 
 
 #This is for adjusting parameters on your local system to generate proper file names for qsub
-path = '/Volumes/Seq_data/chapmanh'
+path = '/Volumes/Seq_data/werbz'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
@@ -14,17 +14,18 @@ index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
 for root, dirs, files in os.walk(path):
-    if root.split('/')[-1]=='chapmanh':
+    if root.split('/')[-1]=='werbz':
         for lane in dirs:
-            samp_file_name = lane.split('_')[-1].split('-')
-            result_name = '_'.join(['results',samp_file_name[2],samp_file_name[3],samp_file_name[4]])
-            print result_name
+            samp_file_name = 'results_lib_'+lane.split('-')[-1]
             #call('mkdir -p /netapp/home/idriver/%s' % result_name, shell=True)
     elif dirs == ['fastqc']:
-        n = root.strip('/').split('/')
+        n = root.strip('/').split('/')[-1]
         out= '${TMPDIR}'
-        name = '_'.join([n[-1].split('-')[1],n[-1].split('-')[2],n[-1].split('-')[-1]])
-        print name
+        print n
+        name1 = n.split('_')[1]
+        name = '_'.join(name1.split('-')[1:])
+        result_file_name = 'results_lib_'+name.split('_')[1]
+        print name, result_file_name
         data_file = root
         result_file = os.path.join(out,name)
         input_files=''
@@ -60,3 +61,4 @@ for root, dirs, files in os.walk(path):
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
+        print tophat_cmd

@@ -10,13 +10,14 @@ import seaborn as sns
 import numpy as np
 from operator import itemgetter
 
-shared_df = pd.DataFrame.from_csv('/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis/fpkm_cuff_pdgfra2_outlier_filtered.txt', sep='\t')
-shared_list = []
-for x in shared_df.index:
-    shared_list.append(x.rstrip())
+#the file path where gene list will be and where new list will output
+path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+#name of file containing gene
+gene_file_source = 'go_search_genes_lung_all.txt'
 
-path_to_file ='/Volumes/Seq_data/Spc2_counts'
-start_file_name = 'norm_cpm'
+
+path_to_file ='/Volumes/Seq_data/cuffnorm_Spc2_all_RS'
+start_file_name = 'fpkm_cuff_spc2'
 fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
 fpbcell.close()
@@ -30,18 +31,43 @@ fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list
 gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
 
-def singular_gene_list(path=path_to_file, file = '/go_search_genes.txt'):
-    gene_df = pd.read_csv(path+file, delimiter= '\t')
-    gene_list = gene_df['GeneID'].tolist()
-    final_list = []
-    for g in gene_list:
-        final_list.append(g.split('_')[0])
-    return final_list
 
-def make_new_matrix(org_matrix_by_cell, gene_list):
+
+def make_new_matrix(org_matrix_by_cell, gene_list_file):
+    gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
+    gene_list = gene_df['GeneID'].tolist()
+    group_list = gene_df['GroupID'].tolist()
     new_gmatrix_df = org_matrix_by_cell[gene_list]
     new_cmatrix_df = new_gmatrix_df.transpose()
-    new_cmatrix_df.to_csv(os.path.join(path_to_file, 'goterms_top5000_count_matrix.txt'), sep = '\t', index=gene_list)
-
-
-make_new_matrix(by_cell, singular_gene_list())
+    new_cmatrix_df.to_csv(os.path.join(path_to_file, 'goterms_monocle_count_matrix.txt'), sep = '\t', index=gene_list)
+    split_on='C'
+    pos=0
+    cat_name=['PNX', 'CTRL']
+    score_tup =[]
+    for gene, go_term in zip(gene_list, group_list):
+        sorted_df = new_gmatrix_df.sort([g])
+        score_on = 'PNX'
+        g_df = sorted_df[g]
+        ranked_cells = sorted_df.index.values
+        ranked_cat = [x.split(split_on)[pos] for x in ranked_cells]
+        div_by = int(len(ranked_cat)/len(cat_name))
+        start = div_by *(len(cat_name)-1)
+        score1 = len([x for x in ranked_cat[start:len(ranked_cat)] if x == score_on])
+        tot = len([x for x in ranked_cat if x == score_on])
+        res_score = float(score1)/float(tot)
+        score = "%.3f" % res_score
+        score_tup.append((g, float(score), go_term))
+    score_df = pd.DataFrame(score_tup, columns=['GeneID', 'Rankscore', 'GroupID'])
+    score_df.to_csv(os.path.join(path_to_file, 'gene_feature_data.txt'), sep = '\t', index=False)
+    sample_data = pd.read_csv(os.path.join(path_to_file, 'samples.table'), delimiter= '\t', index_col=0)
+    by_sample = sample_data.transpose()
+    map_data = pd.read_csv(os.path.join(path_to_file, 'results_spc2_all_align.txt'), delimiter= '\t')
+    by_cell_map = map_data.transponse()
+    new_cell_list = new_gmatrix_df.index.values
+    sample_dict = {}
+    sample_dict['tracking_id'] = []
+    sample_dict['total_mass'] = []
+    sample_dict['condition'] = []
+    sample_dict['one_cell'] = []
+    sample_dict['day'] = []
+    for cell in new_cell_list:

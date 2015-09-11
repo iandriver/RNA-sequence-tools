@@ -58,25 +58,31 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #paths to raw reads and annotation and index of genome
-path = '/netapp/home/idriver/05202015'
+path = '/netapp/home/idriver/07292015'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
-index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
+annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
+index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
 
 #this next section parses the file names so that the paired end reads are in order and determines the name of the output file
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
 run_1 = True
 for root, dirs, files in os.walk(path):
-    if root.split('/')[-1]=='05202015':
+    if root.split('/')[-1]=='07292015':
         for lane in dirs:
-            result_name = 'results_'+lane+'_2'
+            result_name = 'results_sca_spc'
             call('mkdir -p /netapp/home/idriver/%s' % result_name, shell=True)
     elif dirs == []:
         n = root.strip('/').split('/')
-        result_file_name = 'results_'+n[-3]+'_2'
+        result_file_name = 'results_sca_spc'
         out= '${TMPDIR}'
-        name = n[-1]
+        if n[-1][0] != 's':
+            name = 'C'+n[-1]
+        else:
+            if n[-1][3] != '+':
+                name = '-'.join(n[-1].split(' '))
+            else:
+                name = n[-1]
         data_file = root
         result_file = os.path.join(out,name)
         input_files=''
@@ -108,7 +114,7 @@ for root, dirs, files in os.walk(path):
                 final_files = sort_num[0]+' '+sort_num[1].strip(',')
             except IndexError:
                 print 'Incomplete File: '+name
-        tophat_cmd = 'tophat2 -p 8 -r 140 -a 30 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_hg19_ERCC_2/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
+        tophat_cmd = 'tophat2 -p 8 -r 210 -a 40 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -122,10 +128,10 @@ for root, dirs, files in os.walk(path):
 #$ -cwd
 #$ -r y
 #$ -j y
-#$ -l netapp=10G,scratch=40G,mem_total=22G
+#$ -l netapp=10G,scratch=40G,mem_total=42G
 #$ -pe smp 8
 #$ -R yes
-#$ -l h_rt=8:59:00
+#$ -l h_rt=13:59:00
 set echo on
 date
 hostname
@@ -152,7 +158,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if result_file_name == 'results_Human_NR_2' and name != 'C1':
+        if name == 'sca-spc+':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd

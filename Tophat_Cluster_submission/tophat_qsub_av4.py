@@ -58,7 +58,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #paths to raw reads and annotation and index of genome
-path = '/netapp/home/idriver/01272015'
+path = '/netapp/home/idriver/150814_D00108_0379_BC7K08ANXX_Project_chapmanh-m-tooth-mesenchyme'
 out= '${TMPDIR}'
 annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
 index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
@@ -66,19 +66,20 @@ index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS
 #this next section parses the file names so that the paired end reads are in order and determines the name of the output file
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
+result_name = '_'.join(['results',path.split('/')[-1].split('_')[-1]])
+call('mkdir -p /netapp/home/idriver/%s' % result_name, shell=True)
 for root, dirs, files in os.walk(path):
-    result_name = '_'.join(['results',path.split('/')[-1]])
-    call('mkdir -p /netapp/home/idriver/%s' % result_name, shell=True)
-    if dirs == []:
-        n = root.strip('/').split('/')
+    if dirs == ['fastqc']:
+        n = root.strip('/').split('/')[-1].split('_')
         out= '${TMPDIR}'
-        name = '_'.join([n[-2],n[-1].split('_')[-1]])
+        n1 = n[-1].split('-')
+        name = '_'.join([n1[0],n1[1],n1[2],n1[3]])
         data_file = root
         result_file = os.path.join(out,name)
         input_files=''
         r_num = []
         for f in files:
-            if 'fastq' in f and ".txt" not in f:
+            if 'fastq.gz' in f and ".txt" not in f:
                 f_split = f.split('_')
                 r_name = (f_split[3][1])
                 en_split = f_split[4].split('.')
@@ -104,7 +105,7 @@ for root, dirs, files in os.walk(path):
                 final_files = sort_num[0]+' '+sort_num[1].strip(',')
             except IndexError:
                 print 'Incomplete File: '+name
-        tophat_cmd = 'tophat2 -p 8 -r 220 -a 10 --mate-std-dev 80 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
+        tophat_cmd = 'tophat2 -p 8 -r 220 -a 10 --mate-std-dev 100 --read-realign-edit-dist 0 -G '+annotation_file+' --transcriptome-index=/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS -o '+result_file+' '+index_gen_loc+' '+final_files
         samtools_cmd = 'samtools sort '+result_file+'/'+'accepted_hits.bam accepted_hits_sorted'
         cufflinks_cmd = 'cufflinks -p 8 --max-bundle-frags 10000000 -G '+annotation_file+' -o '+result_file+' '+result_file+'/'+'accepted_hits.bam'
         cuffquant_cmd = 'cuffquant -p 8 --max-bundle-frags 10000000 -o '+result_file+' '+annotation_file+' '+result_file+'/'+'accepted_hits.bam'
@@ -148,7 +149,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if name != 'Lane1_C12':
+        if name != 'm_tooth_mesenchyme_1':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd
