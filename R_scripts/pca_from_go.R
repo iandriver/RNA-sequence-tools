@@ -17,4 +17,13 @@ pca_from_go <- function(exp){
 	saveRDS(exp_4, file="exp_fso_sample_clusters_resetgenes.rds")
 	anova_go <- ANOVA(exp_4)
 	saveRDS(anova_go, file="anova_goterm_reset.rds")
+	go_levels = levels(anova_go$"sample_list"$"GroupID")
+	perms <- permutations(length(go_levels),2,v=l_levels)
+	for (p in 1:nrow(perms)){
+		term1 = perms[p,1]
+		term2 = perms[p,2]
+		fc_list <- foldChangeAnalysis(anova_go, term1, term2, foldchange_threshold = 1, pvalue_threshold = 1, display_plot = FALSE)
+		write.table(fc_list, file=paste("Anova_", term1, term2,"folldchange_all.txt" sep = "_")
+, sep="\t")
+	}
 }
