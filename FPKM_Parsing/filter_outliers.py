@@ -216,11 +216,11 @@ def name_filtering(outlier_by_cell, outlier_cell_list):
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/cuffnorm_hu_combined_091015'
+path_to_file = '/Volumes/Seq_data/cuffnorm_hu_IPF_norm_ht280'
 #default file name will use genes.fpkm_table from cuffnorm
 file_name = 'genes.fpkm_table'
 #provide base name for output files
-base_name ='combined_hu_all_091915'
+base_name ='combined_hu_HT280_IPF_Norm'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
