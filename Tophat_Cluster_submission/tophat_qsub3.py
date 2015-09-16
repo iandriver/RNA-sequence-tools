@@ -60,7 +60,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
 #paths to raw reads and annotation and index of genome
 path = '/netapp/home/idriver/09142015'
 out= '${TMPDIR}'
-genome = 'mouse'
+genome = 'human'
 if genome == 'human':
     annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
     index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
@@ -140,7 +140,7 @@ date
 hostname
 pwd
 export PATH=$PATH:${HOME}/bin
-PATH=$PATH:/netapp/home/idriver/cufflinks-2.2.1.Linux_x86_64
+PATH=$PATH:/netapp/home/idriver/bin/cufflinks-2.2.1.Linux_x86_64
 PATH=$PATH:/netapp/home/idriver/bin/bowtie2-2.2.3
 PATH=$PATH:/netapp/home/idriver/bin/samtools-0.1.19_2
 PATH=$PATH:/netapp/home/idriver/bin/tophat-2.0.13.Linux_x86_64
@@ -152,7 +152,7 @@ echo $TMPDIR
 cd $TMPDIR
 mkdir %(name)s
 mkdir -p /netapp/home/idriver/%(result_file_name)s/%(name)s
-%(tophat_cmd)s
+cp -r /netapp/home/idriver/%(result_file_name)s/%(name)s/* %(name)s
 %(cufflinks_cmd)s
 %(cuffquant_cmd)s
 # Copy the results back to the project directory:
@@ -161,7 +161,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if name == 'BU3_C1':
+        if name != 'BU3_C1':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd
