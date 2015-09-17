@@ -60,8 +60,12 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
 #paths to raw reads and annotation and index of genome
 path = '/netapp/home/idriver/05202015'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
-index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
+if genome = 'human':
+    annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
+    index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
+if genome = 'mouse':
+    annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
+    index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
 
 #this next section parses the file names so that the paired end reads are in order and determines the name of the output file
 #use test_qsub.py to test and modify this section locally to work for your file names

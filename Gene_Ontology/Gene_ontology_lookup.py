@@ -15,7 +15,7 @@ from pprint import pprint
 Entrez.email = "ian.driver@ucsf.edu"
 
 path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
-path_to_gojson ="/Volumes/Seq_data"
+path_to_gojson ="/Users/idriver/Documents"
 
 fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
 gene_list = pickle.load(fpgenelist)
