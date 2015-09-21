@@ -57,10 +57,11 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #list of file paths with mapped hits
-pats = ['results_scler_ht280', 'results_chapmanh-hu-IPF-HTII-280', 'results_norm_alpha6']
+pats = ['results_ips17_BU3']
 #output path
 path = '/netapp/home/idriver'
-base_name = 'combined_spc'
+picard_path = '/netapp/home/idriver/broadinstitute-picard-fd8e773/dist/picard.jar'
+base_name = 'combined_ips17_BU3'
 result_file_name = 'count-picard_'+base_name
 out= '${TMPDIR}'
 genome = 'human'
@@ -87,16 +88,16 @@ for p in pats:
 
             #run picard_fixmate to clean up paired end reads in accepted_hits.bam (sorted)
             picard_fixmate_out = sort_out.strip('.bam')+'_FM.bam'
-            picard_fixmate_call = 'java -Xmx3g -jar /netapp/home/idriver/broadinstitute-picard-fd8e773/dist/picard.jar FixMateInformation INPUT='+sort_out+'.bam OUTPUT='+picard_fixmate_out+' AS=true SORT_ORDER=coordinate'
+            picard_fixmate_call = 'java -Xmx3g -jar '+picard_path+' FixMateInformation INPUT='+sort_out+'.bam OUTPUT='+picard_fixmate_out+' AS=true SORT_ORDER=coordinate'
 
             #format htseq-count command to generate raw counts from sorted accepted hits
             hts_out = os.path.join(out,cname+'_htseqcount.txt')
-            htseq_count_call = 'python -m HTSeq.scripts.count -f bam '+picard_fixmate_out+' '+annotation_file+' > '+hts_out
+            htseq_count_call = 'htseq-count -f bam '+picard_fixmate_out+' '+annotation_file+' > '+hts_out
 
             #run picard CollectRnaSeqMetrics (http://broadinstitute.github.io/picard/command-line-overview.html) and generate matrix of 3' to 5' bias (norm_read_dict)
             picard_rnaseqmetric_out = sort_out.strip('sorted.bam')+'RNA_metric.txt'
             picard_rnaseqchart_out = sort_out.strip('sorted.bam')+'RNA_metric.pdf'
-            picard_seqmetric_call = 'java -Xmx3g -jar /netapp/home/idriver/broadinstitute-picard-fd8e773/dist/picard.jar CollectRnaSeqMetrics REF_FLAT=/netapp/home/idriver/'+refflat+' STRAND_SPECIFICITY=NONE MINIMUM_LENGTH=70 CHART_OUTPUT='+picard_rnaseqchart_out+' INPUT='+picard_fixmate_out+' OUTPUT='+picard_rnaseqmetric_out
+            picard_seqmetric_call = 'java -Xmx3g -jar '+picard_path+' CollectRnaSeqMetrics REF_FLAT=/netapp/home/idriver/'+refflat+' STRAND_SPECIFICITY=NONE MINIMUM_LENGTH=70 CHART_OUTPUT='+picard_rnaseqchart_out+' INPUT='+picard_fixmate_out+' OUTPUT='+picard_rnaseqmetric_out
             command_list.append([cname, sam_sort_call, picard_fixmate_call, htseq_count_call, picard_seqmetric_call])
 
 subprocess.call('mkdir -p /netapp/home/idriver/%s' % result_file_name, shell=True)
@@ -147,7 +148,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-    if i != 0:
+    if i == 0:
         filename = '%s.sh' % name+'_'+str(i)
         write_file(filename, contents)
         print calls_zero
