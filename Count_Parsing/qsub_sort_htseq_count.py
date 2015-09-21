@@ -92,7 +92,7 @@ for p in pats:
 
             #format htseq-count command to generate raw counts from sorted accepted hits
             hts_out = os.path.join(out,cname+'_htseqcount.txt')
-            htseq_count_call = 'htseq-count -f bam '+picard_fixmate_out+' '+annotation_file+' > '+hts_out
+            htseq_count_call = 'python -m HTSeq.scripts.count -f bam '+picard_fixmate_out+' '+annotation_file+' > '+hts_out
 
             #run picard CollectRnaSeqMetrics (http://broadinstitute.github.io/picard/command-line-overview.html) and generate matrix of 3' to 5' bias (norm_read_dict)
             picard_rnaseqmetric_out = sort_out.strip('sorted.bam')+'RNA_metric.txt'
