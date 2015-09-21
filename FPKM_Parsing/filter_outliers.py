@@ -184,7 +184,59 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
+<<<<<<< HEAD:FPKM_Parsing/filter_outliers.py
 def name_filtering(outlier_by_cell, outlier_cell_list):
+=======
+<<<<<<< Updated upstream
+path_to_file = '/Volumes/Seq_data/cuffnorm_spc_d0_4_7'
+file_name = 'genes.fpkm_table'
+base_name ='spc_d0_4_7'
+data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
+=======
+path_to_file = '/Volumes/Seq_data/results_spc2_n2'
+base_name ='spc2_count'
+file_name = 'spc2_count_table.txt'
+cuff_df = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
+
+with open(os.path.join(path_to_file,file_name.strip('.txt')+'.p'), 'wb') as fp:
+  pickle.dump(cuff_df, fp)
+
+with open(os.path.join(path_to_file,file_name.strip('.txt')+'.p'), 'rb') as fp:
+  data = pickle.load(fp)
+  gen_list = data.index.tolist()
+  cell_list = [x.strip('_0') for x in list(data.columns.values)]
+  path_to_align=os.path.join(path_to_file,'results_spc2_all_align.p')
+  del_list=filter_by_mapping(path_to_align)
+>>>>>>> Stashed changes
+
+gen_list = data.index.tolist()
+cell_list1 = [x[0:-2] for x in list(data.columns.values)]
+cell_list = []
+for ci in cell_list1:
+    if ci[-1] == '_':
+        cell_list.append(ci+'2')
+    else:
+        cell_list.append(ci)
+
+data.columns=cell_list
+print data
+path_to_align=os.path.join(path_to_file,'results_spc_d0_4_7_align.p')
+del_list=filter_by_mapping(path_to_align)
+print del_list, 'del'
+npdata = np.array(data.values, dtype='f')
+by_cell1 = npdata.transpose()
+rem_cell_list, rem_by_cell = delete_cells(by_cell1, cell_list, del_list)
+npdata2 = rem_by_cell.transpose()
+new_gene_list1, new_by_gene = threshold_genes(npdata2, gen_list)
+by_cell = new_by_gene.transpose()
+outlier_cell_list, outlier_by_cell = filter_cells_sd(by_cell, rem_cell_list)
+final_by_gene = outlier_by_cell.transpose()
+outlier_fpkm_dict = OrderedDict()
+bulk_ctrl_dict = OrderedDict()
+filter_on_lane = False
+bulk = False
+if filter_on_lane:
+>>>>>>> master:FPKM_Parsing/fpkm_df_threshold_renamecells2.py
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')
         cell_name = outlier_cell_list[i]

@@ -138,6 +138,29 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
         for g in already_known:
             pprint(go_json[g])
 
+with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
+    go_json = json.load(gg2)
+go_search_term =raw_input('Enter gene ontology search term: ')
+term_index =['Function', 'Process', 'Component']
+search_term_dict =OrderedDict()
+search_term_list = []
+search_term_dict['GeneID'] = []
+search_term_dict['GroupID'] = []
+gene_exact = []
+for g in g_list:
+    for term_component in term_index:
+        try:
+            go_term = go_json[g][term_component][go_search_term]
+        except:
+            print g
+            go_exact_exists = False
+            pass
+        if go_exact_exists:
+            gene_exact.append(g)
+        else:
+            try:
+searches_df = pd.DataFrame(search_term_dict)
+searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_lung_all.txt'), sep = '\t', index=False)
 
 gene_input = raw_input('Enter gene name(s): ')
 gene_to_search = [str(gene_input)]
