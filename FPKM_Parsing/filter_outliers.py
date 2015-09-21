@@ -216,11 +216,11 @@ def name_filtering(outlier_by_cell, outlier_cell_list):
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/cuffnorm_hu_IPF_norm_ht280'
+path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_combined'
 #default file name will use genes.fpkm_table from cuffnorm
 file_name = 'genes.fpkm_table'
 #provide base name for output files
-base_name ='combined_hu_HT280_IPF_Norm'
+base_name ='combined_sca_spc'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
@@ -229,7 +229,7 @@ data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 #path to where the tophat result file or files are located, default is one level up from cuffnorm file
 path = os.path.dirname(path_to_file)
 #the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_chapmanh-hu-IPF-HTII-280', 'results_norm_alpha6', 'results_scler_ht280']
+result_file_names = ['results_sca_spc', 'results_spc2_n2']
 #create full path to output file
 path_to_align=os.path.join(path,result_file_names[0], 'results_'+base_name+'_align.p')
 #change to True to force creation of new alignment even if file of same name already exists

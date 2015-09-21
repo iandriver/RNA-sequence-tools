@@ -53,8 +53,8 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     jobid = out.split(' ')[2]
 
     return int(jobid)
-sampl_sheet_name = 'hu_combined_091015'
-result_file_names = ['results_chapmanh-hu-IPF-HTII-280','results_norm_alpha6', 'results_scler_ht280']
+sampl_sheet_name = 'hu_IPF_norm_ht280'
+result_file_names = ['results_chapmanh-hu-IPF-HTII-280','results_norm_ht280']
 samp_dict = OrderedDict()
 samp_dict['sample_name'] =[]
 samp_dict['group'] = []
