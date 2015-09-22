@@ -116,6 +116,7 @@ for i, calls in enumerate(command_list):
 #$ -cwd
 #$ -r y
 #$ -j y
+<<<<<<< HEAD
 #$ -l netapp=10G,scratch=10G,mem_total=12G
 #$ -pe smp 4
 #$ -R yes

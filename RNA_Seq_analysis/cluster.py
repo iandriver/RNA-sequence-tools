@@ -14,8 +14,12 @@ import seaborn as sns
 from matplotlib.colors import rgb2hex, colorConverter
 from pprint import pprint
 
-path_to_file ='/Volumes/Seq_data/Spc2_counts'
-start_file_name = 'norm_cpm'
+
+#base path to pickle files with fpkm or count matrix
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2/cuffnorm_pdgfra_1_and_2'
+#for labeling all output files
+start_file_name = 'pdgra_all_low_hi'
+
 fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
 by_cell = pickle.load(fpbcell)
 fpbcell.close()

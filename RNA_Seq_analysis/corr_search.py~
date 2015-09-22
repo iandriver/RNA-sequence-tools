@@ -14,9 +14,9 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_1'
+path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2/cuffnorm_pdgfra_1_and_2'
 #for labeling all output files
-base_name = 'sca_spc_1'
+start_file_name = 'pdgra_all_low_hi'
 
 #gene to search
 term_to_search =raw_input('Enter gene name to search correlation:')
@@ -39,7 +39,7 @@ plot_log = False
 save_new_sig = True
 
 #if new matrix term file exists to update from and you want that gene list to be used for correlations
-make_go_matrix = False
+make_go_matrix = True
 #name of file containing gene list (must have genes under column 'GeneID')
 gene_file_source = 'go_search_genes_lung_all.txt'
 #set inclusion/exclusion criteria in make_new_matrix function prior to activating
@@ -51,18 +51,24 @@ rank = False
 
 #***only edit find_gen_rank categories***
 
-#load file gene
-by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
-by_gene = by_cell.transpose()
-#create list of genes
-gene_list = by_cell.index.tolist()
-#create cell list
-cell_list = [x for x in list(by_cell.columns.values)]
+fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
+by_cell = pickle.load(fpbcell)
+fpbcell.close()
+fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
+cell_list = pickle.load(fpcelllist)
+fpcelllist.close()
+fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
+by_gene = pickle.load(fpbgene)
+fpbgene.close()
+fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
+gene_list = pickle.load(fpgenelist)
+fpgenelist.close()
 
 
-df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
-df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
-print df_by_gene1
+
+
+df_by_gene1 = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
+df_by_cell1 = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
 
 def make_new_matrix(org_matrix_by_cell, gene_list_file):
     split_on='_'
@@ -122,7 +128,7 @@ sig_corr = cor_pos_df.append(cor_neg_df)
 sig_corrs = pd.DataFrame(sig_corr[0], columns=["corr"])
 
 if save_new_sig:
-    sig_corrs.to_csv(os.path.join(path_to_file, base_name+'_counts_corr_sig_'+method_name+'.txt'), sep = '\t')
+    sig_corrs.to_csv(os.path.join(path_to_file, start_file_name.split('_')[0]+'_counts_corr_sig_'+method_name+'.txt'), sep = '\t')
 
 def find_gen_rank(g, split_on='_', pos=1, cat_name=['d4pnx', 'ctrl']):
 
@@ -199,6 +205,7 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
     fig = plt.gcf()
     fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
     plt.savefig(os.path.join(path_to_file, start_file_name+'_corr_with_'+term_to_search), bbox_inches='tight')
+
     plt.show()
 
 
