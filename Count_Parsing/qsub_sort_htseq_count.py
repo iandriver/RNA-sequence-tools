@@ -117,7 +117,7 @@ for i, calls in enumerate(command_list):
 #$ -r y
 #$ -j y
 #$ -l netapp=10G,scratch=10G,mem_total=12G
-#$ -pe smp 8
+#$ -pe smp 4
 #$ -R yes
 #$ -l h_rt=1:59:00
 set echo on
@@ -138,6 +138,7 @@ cd $TMPDIR
 mkdir %(name)s
 mkdir -p /netapp/home/idriver/%(result_file_name)s/%(name)s
 cd %(name)s
+cp -r /netapp/home/idriver/%(result_file_name)s/%(name)s/* .
 %(calls_zero)s
 %(calls_one)s
 %(calls_two)s
@@ -148,7 +149,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-    if i != -1:
+    if i == 0:
         filename = '%s.sh' % name+'_'+str(i)
         write_file(filename, contents)
         print calls_zero

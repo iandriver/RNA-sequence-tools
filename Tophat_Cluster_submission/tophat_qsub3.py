@@ -58,7 +58,7 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #paths to raw reads and annotation and index of genome
-path = '/netapp/home/idriver/09142015'
+path = '/netapp/home/idriver/150911_D00328_0423_AH72FTBCXX_Project_werbz-Lib-L'
 out= '${TMPDIR}'
 
 genome = 'human'
@@ -77,22 +77,20 @@ if genome == 'mouse':
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
 run_1 = True
-result_file_name = 'results_ips17_BU3'
+result_file_name = 'results_zw_luminal'
 call('mkdir -p /netapp/home/idriver/%s' % result_file_name, shell=True)
 for root, dirs, files in os.walk(path):
-    if dirs == []:
+    if dirs == ['fastqc']:
         n = root.strip('/').split('/')
         out= '${TMPDIR}'
-        if n[-2] == 'Run794_data':
-            name = 'BU3_'+n[-1]
-        elif n[-2] == 'Run795_data':
-            name = 'ips17_'+n[-1]
+        name1 = n[-1].split('-')
+        name = '_'.join(name1[-2:])
         data_file = root
         result_file = os.path.join(out,name)
         input_files=''
         r_num = []
         for f in files:
-            if 'fastq' in f and ".txt" not in f:
+            if 'fastq.gz' in f and ".txt" not in f:
                 f_split = f.split('_')
                 r_name = (f_split[3][1])
                 en_split = f_split[4].split('.')
@@ -142,9 +140,9 @@ hostname
 pwd
 export PATH=$PATH:${HOME}/bin
 PATH=$PATH:/netapp/home/idriver/bin/cufflinks-2.2.1.Linux_x86_64
-PATH=$PATH:/netapp/home/idriver/bin/bowtie2-2.2.3
-PATH=$PATH:/netapp/home/idriver/bin/samtools-0.1.19_2
-PATH=$PATH:/netapp/home/idriver/bin/tophat-2.0.13.Linux_x86_64
+PATH=$PATH:/netapp/home/idriver/bin/bowtie2-2.2.6
+PATH=$PATH:/netapp/home/idriver/bin/samtools-1.2
+PATH=$PATH:/netapp/home/idriver/bin/tophat-2.1.0.Linux_x86_64
 PATH=$PATH:/usr/bin/gunzip
 export PATH
 echo $PATH
@@ -153,7 +151,7 @@ echo $TMPDIR
 cd $TMPDIR
 mkdir %(name)s
 mkdir -p /netapp/home/idriver/%(result_file_name)s/%(name)s
-cp -r /netapp/home/idriver/%(result_file_name)s/%(name)s/* %(name)s
+%(tophat_cmd)s
 %(cufflinks_cmd)s
 %(cuffquant_cmd)s
 # Copy the results back to the project directory:
@@ -162,7 +160,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-        if name != 'BU3_C1':
+        if name != 'L_H12':
             filename = '%s.sh' % name
             write_file(filename, contents)
             print tophat_cmd

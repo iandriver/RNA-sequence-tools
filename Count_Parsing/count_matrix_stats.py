@@ -9,9 +9,9 @@ from collections import OrderedDict
 
 
 #list of file paths with mapped hits
-pats = ['/Volumes/Seq_data/results_01272015', '/Volumes/Seq_data/results_spc2_n2']
+pats = ['netapp/home/idriver/count-picard_combined_ips17_BU3']
 #output path
-path = '/Volumes/Seq_data'
+path = 'netapp/home/idriver/count-picard_combined_ips17_BU3'
 #base name for final output count matrix and picard metrics
 base_name = 'combined_spc'
 
@@ -28,7 +28,7 @@ g_counts = []
 
 for p in pats:
     for root, dirnames, filenames in os.walk(os.path.join(path,p)):
-        for filename in fnmatch.filter(filenames, 'accepted_hits.bam'):
+        for filename in fnmatch.filter(filenames, '*_sorted.bam'):
             #sorted file path
             cname = root.split('/')[-1]
             sort_out = os.path.join(out, cname, cname+'_sorted')
@@ -75,18 +75,18 @@ for p in pats:
                         index3.append(int(l[0]))
                         norm_read_dict[cname].append(float(l[1]))
 for k, v in norm_read_dict.items():
-if len(v) == 0:
-    norm_read_dict[k] = [0 for x in range(101)]
-    print norm_read_dict[k], len(norm_read_dict[k])
+    if len(v) == 0:
+        norm_read_dict[k] = [0 for x in range(101)]
+        print norm_read_dict[k], len(norm_read_dict[k])
 print index3
 
 #form pandas dataframe of each and save as tab delimited file
 count_df = pd.DataFrame(count_dict, index = gene_list)
 count_df.to_csv(os.path.join(path,base_name+'_count_table.txt'), sep = '\t')
-with open(os.path.join(path,'htseq_count_'base_name'.p'), 'wb') as fp1:
-pickle.dump(count_df, fp1)
+with open(os.path.join(path,'htseq_count_'+base_name+'.p'), 'wb') as fp1:
+    pickle.dump(count_df, fp1)
 pic_stats_df = pd.DataFrame(picard_stats_dict, index = index1)
 pic_stats_df.to_csv(os.path.join(path,base_name+'_picard_stats.txt'), sep = '\t')
 norm_read_df = pd.DataFrame(norm_read_dict, index = index3)
-norm_read_df.to_csv(os.path.join(path,base_name'_read_bias.txt'), sep = '\t')
+norm_read_df.to_csv(os.path.join(path,base_name+'_read_bias.txt'), sep = '\t')
 pd.DataFrame.plot(norm_read_df)
