@@ -91,7 +91,7 @@ for p in pats:
             picard_fixmate_call = 'java -Xmx3g -jar '+picard_path+' FixMateInformation INPUT='+sort_out+'.bam OUTPUT='+picard_fixmate_out+' AS=true SORT_ORDER=coordinate'
 
             #format htseq-count command to generate raw counts from sorted accepted hits
-            hts_out = os.path.join(out,cname+'_htseqcount.txt')
+            hts_out = os.path.join(out,cname,cname+'_htseqcount.txt')
             htseq_count_call = 'python -m HTSeq.scripts.count -f bam '+picard_fixmate_out+' '+annotation_file+' > '+hts_out
 
             #run picard CollectRnaSeqMetrics (http://broadinstitute.github.io/picard/command-line-overview.html) and generate matrix of 3' to 5' bias (norm_read_dict)
@@ -148,7 +148,7 @@ cp -r %(name)s/* /netapp/home/idriver/%(result_file_name)s/%(name)s
 rm -r %(name)s
 date
 """ % vars()
-    if i == 0:
+    if i != -1:
         filename = '%s.sh' % name+'_'+str(i)
         write_file(filename, contents)
         print calls_zero
