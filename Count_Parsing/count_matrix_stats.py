@@ -16,10 +16,10 @@ path = 'netapp/home/idriver/count-picard_combined_ips17_BU3'
 base_name = 'combined_spc'
 
 #initialize dictonaries for collected output
-fpkm_matrix_dict_g = OderedDict()
-count_dict = OderedDict()
-norm_read_dict = OderedDict()
-picard_stats_dict = OderedDict()
+fpkm_matrix_dict_g = OrderedDict()
+count_dict = OrderedDict()
+norm_read_dict = OrderedDict()
+picard_stats_dict = OrderedDict()
 
 #collect gene_list once since it the same between all samples
 st = 1
