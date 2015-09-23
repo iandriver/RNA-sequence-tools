@@ -58,17 +58,8 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     return int(jobid)
 
 #paths to raw reads and annotation and index of genome
-<<<<<<< HEAD
-path = '/netapp/home/idriver/150911_D00328_0423_AH72FTBCXX_Project_werbz-Lib-L'
-=======
-path = '/netapp/home/idriver/07292015'
+path = '/netapp/home/idriver/150911_D00328_0423_AH72FTBCXX_Project_werbz-Lib-B'
 out= '${TMPDIR}'
-annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
-index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
-path = '/netapp/home/idriver/09142015'
->>>>>>> test
-out= '${TMPDIR}'
-
 genome = 'human'
 if genome == 'human':
     annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
@@ -85,15 +76,10 @@ if genome == 'mouse':
 #use test_qsub.py to test and modify this section locally to work for your file names
 pathlist = []
 run_1 = True
-result_file_name = 'results_zw_luminal'
+result_file_name = 'results_zw_basal'
 call('mkdir -p /netapp/home/idriver/%s' % result_file_name, shell=True)
 for root, dirs, files in os.walk(path):
-<<<<<<< HEAD
     if dirs == ['fastqc']:
-=======
-
-    if dirs == []:
->>>>>>> test
         n = root.strip('/').split('/')
         out= '${TMPDIR}'
         name1 = n[-1].split('-')
@@ -143,7 +129,7 @@ for root, dirs, files in os.walk(path):
 #$ -cwd
 #$ -r y
 #$ -j y
-#$ -l netapp=10G,scratch=40G,mem_total=42G
+#$ -l netapp=10G,scratch=20G,mem_total=22G
 #$ -pe smp 8
 #$ -R yes
 #$ -l h_rt=13:59:00
