@@ -1,6 +1,6 @@
 library(edgeR)
 make_cpm <- function(path_to_file,file_base_name){
-	raw.data <- read.table(file = path_to_file, header=TRUE)
+	raw.data <- read.csv(file = file_path, header=TRUE, sep="\t", row.names=1)
 	counts <- raw.data[ , -c(1,ncol(raw.data)) ]
 	rownames( counts ) <- row.names(raw.data)
 	cds <- DGEList( counts , group = colnames(counts) )
