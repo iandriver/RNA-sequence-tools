@@ -9,9 +9,9 @@ from collections import OrderedDict
 
 
 #list of file paths with mapped hits
-pats = ['netapp/home/idriver/count-picard_combined_ips17_BU3']
+pats = ['/netapp/home/idriver/count-picard_combined_ips17_BU3']
 #output path
-path = 'netapp/home/idriver/count-picard_combined_ips17_BU3'
+path = '/netapp/home/idriver/count-picard_combined_ips17_BU3'
 #base name for final output count matrix and picard metrics
 base_name = 'combined_spc'
 
@@ -24,31 +24,33 @@ picard_stats_dict = OrderedDict()
 #collect gene_list once since it the same between all samples
 st = 1
 gene_list = []
-g_counts = []
+
 
 for p in pats:
     for root, dirnames, filenames in os.walk(os.path.join(path,p)):
         for filename in fnmatch.filter(filenames, '*_sorted.bam'):
             #sorted file path
             cname = root.split('/')[-1]
+            out = path
             sort_out = os.path.join(out, cname, cname+'_sorted')
 
             #fixmate file path
             picard_fixmate_out = sort_out.strip('.bam')+'_FM.bam'
 
             #format htseq-count command to generate raw counts from sorted accepted hits
-            hts_out = os.path.join(out,cname+'_htseqcount.txt')
+            hts_out = os.path.join(out,cname,cname+'_htseqcount.txt')
 
             #run picard CollectRnaSeqMetrics (http://broadinstitute.github.io/picard/command-line-overview.html) and generate matrix of 3' to 5' bias (norm_read_dict)
             picard_rnaseqmetric_out = sort_out.strip('sorted.bam')+'RNA_metric.txt'
             picard_rnaseqchart_out = sort_out.strip('sorted.bam')+'RNA_metric.pdf'
 
+            g_counts = []
             with open(hts_out, mode='r') as infile:
                 hts_tab = csv.reader(infile, delimiter = '\t')
                 print st
                 for l in hts_tab:
                     if st == 1:
-                      gene_list.append(l[0])
+                        gene_list.append(l[0])
                     g_counts.append(l[1])
                 st = 2
                 print len(g_counts)
@@ -78,7 +80,7 @@ for k, v in norm_read_dict.items():
     if len(v) == 0:
         norm_read_dict[k] = [0 for x in range(101)]
         print norm_read_dict[k], len(norm_read_dict[k])
-print index3
+
 
 #form pandas dataframe of each and save as tab delimited file
 count_df = pd.DataFrame(count_dict, index = gene_list)
@@ -89,4 +91,3 @@ pic_stats_df = pd.DataFrame(picard_stats_dict, index = index1)
 pic_stats_df.to_csv(os.path.join(path,base_name+'_picard_stats.txt'), sep = '\t')
 norm_read_df = pd.DataFrame(norm_read_dict, index = index3)
 norm_read_df.to_csv(os.path.join(path,base_name+'_read_bias.txt'), sep = '\t')
-pd.DataFrame.plot(norm_read_df)
