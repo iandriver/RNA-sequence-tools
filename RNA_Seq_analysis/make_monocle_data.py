@@ -11,31 +11,24 @@ import numpy as np
 from operator import itemgetter
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/cuffnorm_spc_d0_4_7'
+path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_combined'
 #name of file containing gene
 gene_file_source = 'go_search_genes_lung_all.txt'
 
+base_name = 'combined_sca_spc'
+#load file gene
+by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
+by_gene = by_cell.transpose()
+#create list of genes
+gene_list = by_cell.index.tolist()
+#create cell list
+cell_list = [x for x in list(by_cell.columns.values)]
 
 
-start_file_name = 'spc_d0_4_7'
-fpbcell = open(os.path.join(path_to_file, start_file_name+'_outlier_by_cell.p'), 'rb')
-by_cell = pickle.load(fpbcell)
-fpbcell.close()
-fpcelllist = open(os.path.join(path_to_file, start_file_name+'_outlier_cell_list.p'), 'rb')
-cell_list = pickle.load(fpcelllist)
-fpcelllist.close()
-fpbgene = open(os.path.join(path_to_file, start_file_name+'_outlier_by_gene.p'), 'rb')
-by_gene = pickle.load(fpbgene)
-fpbgene.close()
-fpgenelist = open(os.path.join(path_to_file, start_file_name+'_outlier_gene_list.p'), 'rb')
-gene_list = pickle.load(fpgenelist)
-fpgenelist.close()
+df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
+df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
 
-
-df_by_gene = pd.DataFrame(by_cell, columns=gene_list, index=cell_list)
-df_by_cell = pd.DataFrame(by_gene, columns=cell_list, index=gene_list)
-
-def make_new_matrix(org_matrix_by_cell, gene_list_file):
+def make_new_matrix(org_matrix_by_cell, gene_list_file, rankscore=['pnx', 'ctrl']):
     split_on='_'
     gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
     gene_list = gene_df['GeneID'].tolist()
@@ -118,4 +111,4 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     cell_data_df = pd.DataFrame(cell_data, columns=['tracking_id','total_mass','input_mass','per_mapped','condition','day','single_cell'])
     cell_data_df.to_csv(os.path.join(path_to_file, 'cell_feature_data.txt'), sep = '\t', index=False)
 
-make_new_matrix(df_by_gene, gene_file_source)
+make_new_matrix(df_by_gene1, gene_file_source)
