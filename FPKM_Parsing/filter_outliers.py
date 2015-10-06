@@ -184,59 +184,7 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
-<<<<<<< HEAD:FPKM_Parsing/filter_outliers.py
 def name_filtering(outlier_by_cell, outlier_cell_list):
-=======
-<<<<<<< Updated upstream
-path_to_file = '/Volumes/Seq_data/cuffnorm_spc_d0_4_7'
-file_name = 'genes.fpkm_table'
-base_name ='spc_d0_4_7'
-data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
-=======
-path_to_file = '/Volumes/Seq_data/results_spc2_n2'
-base_name ='spc2_count'
-file_name = 'spc2_count_table.txt'
-cuff_df = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
-
-with open(os.path.join(path_to_file,file_name.strip('.txt')+'.p'), 'wb') as fp:
-  pickle.dump(cuff_df, fp)
-
-with open(os.path.join(path_to_file,file_name.strip('.txt')+'.p'), 'rb') as fp:
-  data = pickle.load(fp)
-  gen_list = data.index.tolist()
-  cell_list = [x.strip('_0') for x in list(data.columns.values)]
-  path_to_align=os.path.join(path_to_file,'results_spc2_all_align.p')
-  del_list=filter_by_mapping(path_to_align)
->>>>>>> Stashed changes
-
-gen_list = data.index.tolist()
-cell_list1 = [x[0:-2] for x in list(data.columns.values)]
-cell_list = []
-for ci in cell_list1:
-    if ci[-1] == '_':
-        cell_list.append(ci+'2')
-    else:
-        cell_list.append(ci)
-
-data.columns=cell_list
-print data
-path_to_align=os.path.join(path_to_file,'results_spc_d0_4_7_align.p')
-del_list=filter_by_mapping(path_to_align)
-print del_list, 'del'
-npdata = np.array(data.values, dtype='f')
-by_cell1 = npdata.transpose()
-rem_cell_list, rem_by_cell = delete_cells(by_cell1, cell_list, del_list)
-npdata2 = rem_by_cell.transpose()
-new_gene_list1, new_by_gene = threshold_genes(npdata2, gen_list)
-by_cell = new_by_gene.transpose()
-outlier_cell_list, outlier_by_cell = filter_cells_sd(by_cell, rem_cell_list)
-final_by_gene = outlier_by_cell.transpose()
-outlier_fpkm_dict = OrderedDict()
-bulk_ctrl_dict = OrderedDict()
-filter_on_lane = False
-bulk = False
-if filter_on_lane:
->>>>>>> master:FPKM_Parsing/fpkm_df_threshold_renamecells2.py
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')
         cell_name = outlier_cell_list[i]
@@ -268,11 +216,11 @@ if filter_on_lane:
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_combined'
+path_to_file = '/Volumes/Seq_data/counts_spc_d0_4_7'
 #default file name will use genes.fpkm_table from cuffnorm
-file_name = 'genes.fpkm_table'
+file_name = 'counts_spc_d0_4_7_count_table.txt'
 #provide base name for output files
-base_name ='combined_sca_spc'
+base_name ='counts_spc_d0_4_7'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
@@ -281,7 +229,7 @@ data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 #path to where the tophat result file or files are located, default is one level up from cuffnorm file
 path = os.path.dirname(path_to_file)
 #the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_sca_spc', 'results_spc2_n2']
+result_file_names = ['results_spc2_n2', 'results_SPC_d7']
 #create full path to output file
 path_to_align=os.path.join(path,result_file_names[0], 'results_'+base_name+'_align.p')
 #change to True to force creation of new alignment even if file of same name already exists
@@ -300,7 +248,11 @@ print del_list, 'del'
 #create list of genes
 gen_list = data.index.tolist()
 #cell list
-cell_list = [x[:-2] for x in list(data.columns.values)]
+if file_name == 'genes.fpkm_table':
+    cell_list = [x[:-2] for x in list(data.columns.values)]
+else:
+    cell_list = [x for x in list(data.columns.values)]
+
 print cell_list , 'clist'
 #make dataframe a numpy array for easy manipulation
 npdata = np.array(data.values, dtype='f')
@@ -320,7 +272,7 @@ bulk_ctrl_dict = OrderedDict()
 #detailed funtion to tailor any name filtering. Change to True and edit name_filtering function
 filter_on_lane = False
 #function for removing cells by name, will be processed as a seperate matrix file
-bulk = False
+bulk = True
 if filter_on_lane:
     outlier_fpkm_dict = name_filtering(outlier_by_cell, outlier_cell_list)
 else:
