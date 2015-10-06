@@ -55,14 +55,6 @@ run_scLVM_norm <- function(filepath, base_name, species){
 	padjA <- p.adjust( pA, "BH" )
 	table( padjA < .1 )
 	
-	#plot mean/cv2 relationship and 
-	plot( meansGene, cv2Gene, log="xy", col=1+(padjA<0.1),ylim=c(0.1,95), xlab='Mean Counts', ylab='CV2 Counts')
-	xg <- 10^seq( -3, 5, length.out=100 )
-	lines( xg, coefficients(fitA)["a0"] + coefficients(fitA)["a1tilde"]/xg,lwd=2,col='blue' )
-	points(meansERCC, cv2ERCC,col='blue',pch=15,cex=1.1)
-	#points(meansMmus[cc_gene_indices], cv2Mmus[cc_gene_indices],col=rgb(0,255,0,100,maxColorValue=255),pch=2,cex=0.75)
-	#points(meansMmus[ccCBall_gene_indices],cv2Mmus[ccCBall_gene_indices],col=rgb(0,255,0,20,maxColorValue=255),pch=2,cex=0.8)
-	legend('bottomleft',c('T-cells (padj >= 0.1)','T-cells (padj<0.1)','ERCC','Cell Cycle genes'),pch=c(1,1,15),col=c('black','red','blue','green'),cex=0.7)
 	
 	eps=1
 	LogNcountsGene=log10(nCountsGene+eps)
@@ -74,15 +66,34 @@ run_scLVM_norm <- function(filepath, base_name, species){
 	gene_names_het=gene_names[which(padjA<0.1)]
 	
 	#all Cycle base genes homologs (top 600 genes)
-	hu2spcAll=inpIDMapper(dataCB[1:600,3],'HOMSA','HOMSA',srcIDType='EG',destIDType='EG')
-	ccCBall_gene_indices=match(unlist(hu2spcAll),rownames(nCountsGene))
-
-
-
-
-
-
-
-
-
+	hu2SYMAll <- intraIDMapper(dataCB[1:600,3],'HOMSA',srcIDType='ENSEMBL',destIDType='SYMBOL')
+	ccCBall_gene_indices=na.omit(match(unlist(hu2SYMAll),rownames(nCountsGene)))
+	
+	xxGO <- as.list(org.Hs.egGO2EG)
+	cell_cycleEG <-unlist(xxGO['GO:0007049'])
+	x <- org.Hs.egENSEMBL
+	mapped_genes <- mappedkeys(x)
+	xxE <- as.list(x[mapped_genes])
+	ens_ids_cc<-unlist(xxE[cell_cycleEG])
+	ens_to_sym_cc <- intraIDMapper(ens_ids_cc,'HOMSA',srcIDType='ENSEMBL',destIDType='SYMBOL')
+	cc_gene_indices <- na.omit(match(unlist(ens_to_sym_cc), rownames(countsGene)))
+	
+	cellcyclegenes <- ens_ids_cc
+	cellcyclegenes_filter <- cc_gene_indices
+	cell_names <- colnames(nCountsGene)
+	Y <- nCountsGene
+	genes_heterogen <- (padjA<0.1)*1
+	countsERCC_mat=as.matrix(countsERCC * 1)
+	countsGene_mat = as.matrix(countsGene * 1)
+	
+	#plot mean/cv2 relationship and 
+	plot( meansGene, cv2Gene, log="xy", col=1+(padjA<0.1),ylim=c(0.1,95), xlab='Mean Counts', ylab='CV2 Counts')
+	xg <- 10^seq( -3, 5, length.out=100 )
+	lines( xg, coefficients(fitA)["a0"] + coefficients(fitA)["a1tilde"]/xg,lwd=2,col='blue' )
+	points(meansERCC, cv2ERCC,col='blue',pch=15,cex=1.1)
+	points(meansGene[cc_gene_indices], cv2Gene[cc_gene_indices],col=rgb(0,255,0,100,maxColorValue=255),pch=2,cex=0.75)
+	points(meansGene[ccCBall_gene_indices],cv2Gene[ccCBall_gene_indices],col=rgb(0,255,0,20,maxColorValue=255),pch=2,cex=0.8)
+	legend('bottomleft',c('cells (padj >= 0.1)','cells (padj<0.1)','ERCC','Cell Cycle genes'),pch=c(1,1,15),col=c('black','red','blue','green'),cex=0.7)
+	
+	h5save(ccCBall_gene_indices, gene_names, cellcyclegenes_filter, cellcyclegenes, cell_names, nCountsGene, genes_heterogen, LogVar_techGene, LogNcountsGene, countsGene_mat, sfERCC,countsERCC_mat, file=paste('data', base_name, '_normCounts.h5f',sep='_'))
 }
