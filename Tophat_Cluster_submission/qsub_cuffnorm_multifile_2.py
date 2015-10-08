@@ -53,8 +53,22 @@ def qsub_submit(command_filename, hold_jobid = None, fname = None):
     jobid = out.split(' ')[2]
 
     return int(jobid)
-sampl_sheet_name = 'hu_IPF_norm_ht280'
-result_file_names = ['results_chapmanh-hu-IPF-HTII-280','results_norm_ht280']
+#input text name to be added to filenames
+sampl_sheet_name = 'hu-IPF-HTII-280'
+#choose the genome and annotation set by organism
+genome = 'mouse'
+if genome == 'human':
+    annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
+    index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
+    refflat = 'refFlat.txt.gz'
+    transcript_index = '/netapp/home/idriver/transcriptome_data_hg19_ERCC_2/known_e_RS'
+if genome == 'mouse':
+    annotation_file = '/netapp/home/idriver/genes_E_RS.gtf'
+    index_gen_loc = '/netapp/home/idriver/mm10_ERCC_RS_bt2/mm10_ERCC_RS/mm10_ERCC_RS'
+    refflat = 'refFlat_mm10ERS.txt.gz'
+    transcript_index = '/netapp/home/idriver/transcriptome_data_mm10_RS/known_e_RS'
+#the names of the result file(s) that contain the abundances.cxb files to be merged by cuffnorm
+result_file_names = ['results_chapmanh-m-CC10-pos', 'results_chapmanh-m-doublecre', 'results_chapmanh-mSCLib3']
 samp_dict = OrderedDict()
 samp_dict['sample_name'] =[]
 samp_dict['group'] = []
@@ -74,8 +88,6 @@ with open(os.path.join('/netapp/home/idriver', 'sample_sheet_'+sampl_sheet_name)
     writer = csv.writer(outfile, delimiter = "\t")
     writer.writerow(keys)
     writer.writerows(zip(*[samp_dict[key] for key in keys]))
-annotation_file = '/netapp/home/idriver/hg19_ERCC_bt2/Annotation/hg19_ERCC.gtf'
-index_gen_loc = '/netapp/home/idriver/hg19_ERCC_bt2/hg19_ERCC/hg19_ERCC'
 cuff_name = 'cuffnorm_'+sampl_sheet_name
 cuffnorm_cmd = 'cuffnorm --use-sample-sheet -p 8 -o '+cuff_name+' '+annotation_file+' '+os.path.join('/netapp/home/idriver', 'sample_sheet_'+sampl_sheet_name)
 mk_dir = 'mkdir -p '+os.path.join('/netapp/home/idriver', cuff_name)
@@ -91,7 +103,7 @@ command = """\
 #$ -cwd
 #$ -r y
 #$ -j y
-#$ -l netapp=10G,scratch=40G,mem_total=32G
+#$ -l netapp=15G,scratch=40G,mem_total=22G
 #$ -pe smp 8
 #$ -R yes
 #$ -l h_rt=5:59:00
