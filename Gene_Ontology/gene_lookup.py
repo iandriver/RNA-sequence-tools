@@ -16,19 +16,21 @@ from collections import OrderedDict
 Entrez.email = "ian.driver@ucsf.edu"
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/results_pdgfra_all_n2/cuffnorm_pdgfra_1_and_2'
+path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_d0_4_7_spc'
 #where the json gene ontology database is stored
 path_to_gojson ="/Volumes/Seq_data"
 #name of file containing gene
-gene_file_source = 'pdgra_all_low_hi_outlier_gene_list.p'
+#the file path where gene list will be and where new list will output
+use_gene_file = False
+#name of file containing gene
+gene_file_source = 'go_search_genes_lung_all.txt'
 #if you want to update the database change to True
-update =False
+update = False
+base_name = 'sca_d0_4_7'
 
-#will only take pickle files and .txt singular files (has [GeneID] column)
-if gene_file_source[-1] != 'p':
-    singular = True
-else:
-    singular = False
+#load file gene
+by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
+by_gene = by_cell.transpose()
 
 def return_pickle(path_to_file, file):
     fpgenelist = open(os.path.join(path_to_file,file), 'rb')
@@ -45,6 +47,15 @@ def singular_gene_list(path_to_file, file):
     final_list.append(g.split('_')[0])
   return final_list
 
+#create list of genes
+if use_gene_file:
+    #will only take pickle files and .txt singular files (has [GeneID] column)
+    if gene_file_source[-1] != 'p':
+        g_list = return_pickle(path_to_file, gene_file_source)
+    else:
+        g_list = singular_gene_list(path_to_file, gene_file_source)
+else:
+    g_list = by_cell.index.tolist()
 
 def check_ids(id_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
     already_known = []
@@ -80,7 +91,7 @@ def get_gene(gene_list):
 def retrieve_annotation(id_list):
   goterms = OrderedDict()
   handle = Entrez.efetch(db='gene', id=",".join(id_list), retype='gb', retmode='xml')
-  all_records = Entrez.parse(handle, 'genebank')
+  all_records = Entrez.parse(handle, 'genebank', validate=False)
   for record in all_records:
     for rec in record['Entrezgene_properties']:
       for i, k in rec.items():
@@ -170,10 +181,7 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
         for g in already_known:
             return go_json[g]
 
-if singular:
-    g_list = singular_gene_list(path_to_file, gene_file_source)
-else:
-    g_list = return_pickle(path_to_file, gene_file_source)
+
 if update:
     update_json(g_list)
 with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
@@ -181,6 +189,8 @@ with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
 go_search_term =[('Process', 'lung alveolus development'),
                 ('Process', 'lung morphogenesis'),
                 ('Process', 'lung development'),
+                ('Process', 'mesenchymal-epithelial cell signaling'),
+                ('Process', 'establishment of planar polarity'),
                 ('Component', 'alveolar lamellar body'),
                 ('Component', 'alveolar lamellar body membrane'),
                 ('Function', 'cytokine activity'),
@@ -205,7 +215,11 @@ go_search_term =[('Process', 'lung alveolus development'),
                 ('Process', 'ion transmembrane transport'),
                 ('Function', 'SMAD binding'),
                 ('Function', 'transcription corepressor activity'),
-                ('Process', 'negative regulation of neuron apoptotic process')]
+                ('Process', 'negative regulation of neuron apoptotic process'),
+                ('Process', 'negative regulation of JAK-STAT cascade'),
+                ('Process', 'negative regulation of inflammatory response'),
+                ('Process', 'cell migration'),
+                ('Function', 'phospholipase activity')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict =OrderedDict()
 search_term_list = []
