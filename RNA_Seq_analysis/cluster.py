@@ -118,7 +118,7 @@ def run_cluster(by_gene_matrix):
     cell_list = [x for x in list(by_gene_matrix.index.values)]
     cell_dist = pdist(np.array(by_gene_matrix), metric='euclidean')
     row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
-    row_clusters = linkage(cell_dist, metric=metric, method=method)
+    row_clusters = linkage(cell_dist, metric=metric, method=average)
     link_mat = pd.DataFrame(row_clusters,
                  columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
                  index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
@@ -310,7 +310,7 @@ def clust_heatmap(top_pca_list, df_by_gene, num_to_plot=100):
 def clust_stability(log2exp_all, iterations=15):
     pass
 gene_number= 100
-log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell)
+log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=True)
 top_pca = plot_PCA(log2_expdf_gene, num_genes=gene_number)
 top_pca_by_gene = log2_expdf_gene[top_pca]
 top_pca_by_cell = top_pca_by_gene.transpose()
