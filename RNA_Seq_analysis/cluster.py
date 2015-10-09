@@ -19,12 +19,15 @@ from pprint import pprint
 #base path to pickle files with fpkm or count matrix
 path_to_file = '/Volumes/Seq_data/count-picard_combined_ips17_BU3'
 #for labeling all output files
-start_file_name = 'ips17_BU3_normERCC'
+start_file_name = 'ips17_BU3_cpm_outlier'
 
 make_go_matrix = False
+#choose metric and method for scipy clustering (also used in seaborn clustermap)
+metric='euclidean'
+method='ward'
 
 #load file gene
-by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,'ips_hu_normalized_Genes_by_ERCC.txt'), sep='\t')
+by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,'BU3_ips17_normalized_cpm_outlier_filtered.txt'), sep='\t')
 by_gene = by_cell.transpose()
 #create list of genes
 gene_list = by_cell.index.tolist()
@@ -61,12 +64,10 @@ else:
     df_by_cell2, df_by_gene2 = df_by_cell1, df_by_gene1
 
 
-def preprocess_df(np_by_cell, gen_list, number_expressed=4):
+def preprocess_df(np_by_cell, gen_list, number_expressed=3):
     g_todelete = []
-    print gen_list
     for g1, gene in enumerate(np_by_cell):
         cells_exp = (gene >= 1.0).sum()
-        print cells_exp
         if cells_exp < number_expressed:
             g_todelete.append(g1)
     g1_todelete = sorted(g_todelete, reverse = True)
@@ -85,22 +86,39 @@ gen_list = df_by_cell2.index.tolist()
 np_by_cell, n_gene_list = preprocess_df(np_by_cell2, gen_list)
 df_by_gene = pd.DataFrame(np_by_cell.transpose(), index = df_by_cell2.columns.values, columns= n_gene_list)
 df_by_cell = df_by_gene.transpose()
-log2_df = np.log2(df_by_cell+1)
 
-log2_df2= pd.DataFrame(log2_df.convert_objects(convert_numeric=True))
-print log2_df2.columns.values
-log_mean = log2_df.mean(axis=0).order(ascending=False)
-log2_sorted = log2_df.reindex_axis(log2_df.mean(axis=0).order(ascending=False).index, axis=1)
-ax = sns.boxplot(data=log2_sorted, whis= .75, notch=True)
-ax = sns.stripplot(x=log2_sorted.columns.values, y=log2_sorted.mean(axis=0), size=4, jitter=True, edgecolor="gray")
-xtickNames = plt.setp(ax, xticklabels=log2_sorted.columns.values)
-plt.setp(xtickNames, rotation=90, fontsize=9)
-plt.show()
+def log2_oulierfilter(df_by_cell, log2_cutoff = 1.5, plot=False):
+    log2_df = np.log2(df_by_cell+1)
+    log2_df2= pd.DataFrame(log2_df.convert_objects(convert_numeric=True))
+    log_mean = log2_df.mean(axis=0).order(ascending=False)
+    log2_sorted = log2_df.reindex_axis(log2_df.mean(axis=0).order(ascending=False).index, axis=1)
+    xticks = []
+    keep_col= []
+    for col, m in zip(log2_sorted.columns.tolist(),log2_sorted.mean()):
+        if m > log2_cutoff:
+            keep_col.append(col)
+            xticks.append(col+' '+str("%.2f" % m))
+    filtered_df_by_cell = df_by_cell[keep_col]
+    filtered_df_by_gene = filtered_df_by_cell.transpose()
+    filtered_log2 = np.log2(filtered_df_by_cell[filtered_df_by_cell>0])
+    if plot:
+        ax = sns.boxplot(data=filtered_log2, whis= .75, notch=True)
+        ax = sns.stripplot(x=filtered_log2.columns.values, y=filtered_log2.mean(axis=0), size=4, jitter=True, edgecolor="gray")
+        xtickNames = plt.setp(ax, xticklabels=xticks)
+        plt.setp(xtickNames, rotation=90, fontsize=9)
+        plt.show()
+        plt.clf()
+        sns.distplot(filtered_log2.mean())
+        plt.show()
+    log2_expdf_cell = np.log2(filtered_df_by_cell+1)
+    log2_expdf_gene = log2_expdf_cell.transpose()
+    return log2_expdf_cell, log2_expdf_gene
 
 def run_cluster(by_gene_matrix):
+    cell_list = [x for x in list(by_gene_matrix.index.values)]
     cell_dist = pdist(np.array(by_gene_matrix), metric='euclidean')
     row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
-    row_clusters = linkage(row_dist, metric='euclidean', method='ward')
+    row_clusters = linkage(cell_dist, metric=metric, method=method)
     link_mat = pd.DataFrame(row_clusters,
                  columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
                  index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
@@ -214,7 +232,8 @@ def make_tree_json(row_clusters, df_by_gene):
 
 
 #makes
-def find_twobytwo(cc, threshold_num = 14):
+def find_twobytwo(cc, df_by_cell, threshold_num = 14):
+    gene_list = df_by_cell.index.tolist()
     pair_dict = {}
     parent = cc[0][1]
     p_num = cc[0][0]
@@ -246,38 +265,33 @@ def find_twobytwo(cc, threshold_num = 14):
     sig_just_genes = [sig[0] for sig in sig_gene_list]
     return sig_just_genes
 
-def plot_PCA(gene_list_filter, df_by_gene):
-    sig_by_cell = df_by_gene[gene_list_filter]
-    clf = skPCA(2)
-    np_by_gene = np.asarray(sig_by_cell)
+def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False):
+    gene_list = df_by_gene.columns.tolist()
+    if gene_list_filter:
+        sig_by_gene = df_by_gene[gene_list_filter]
+    else:
+        sig_by_gene = df_by_gene
+    clf = skPCA(3)
+    np_by_gene = np.asarray(sig_by_gene)
     by_gene_trans = clf.fit_transform(np_by_gene)
-    Pc_df = pd.DataFrame(clf.components_.T, columns=['PC-1', 'PC-2'], index=sig_by_cell.columns)
-    Pc_1_sort_df = pd.DataFrame.sort(pd.DataFrame.abs(Pc_df), columns = 'PC-1', ascending=False)
-    Pc_2_sort_df = pd.DataFrame.sort(pd.DataFrame.abs(Pc_df), columns = 'PC-2', ascending=False)
-    pc_1_gene_list = Pc_1_sort_df.index.values
-    pc_2_gene_list = Pc_2_sort_df.index.values
-    top_pca_list = []
-    for i, x in enumerate(pc_1_gene_list):
-        if x not in top_pca_list and x[0:2] != 'Rp':
-            top_pca_list.append(x)
-        elif pc_2_gene_list[i] not in top_pca_list and pc_2_gene_list[i][0:2] != 'Rp':
-            top_pca_list.append(pc_2_gene_list[i])
-    print top_pca_list[0:150]
-    top_by_cell = df_by_gene[top_pca_list[0:150]]
+    Pc_df = pd.DataFrame(clf.components_.T, columns=['PC-1', 'PC-2', 'PC-3'], index=sig_by_gene.columns.tolist())
+    pca_rank_df = Pc_df.abs().sum(axis=1)
+    Pc_sort_df = pca_rank_df.nlargest(len(sig_by_gene.columns.tolist()))
+    top_pca_list = Pc_sort_df.index.tolist()
+    print top_pca_list[0:150], 'top_pca_list'
+    top_by_gene = df_by_gene[top_pca_list[0:num_genes]]
     clf_top = skPCA(n_components=2)
-    np_top_gene = np.asarray(top_by_cell.transpose())
-    print top_by_cell
-    print np_top_gene
-    top_gene_trans = clf_top.fit_transform(np_top_gene)
+    np_top_cell = np.asarray(top_by_gene.transpose())
+
+    top_gene_trans = clf_top.fit_transform(np_top_cell)
     plt.clf()
     fig, ax = plt.subplots()
     ax.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
     ax.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0]+1)])
     ax.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1]+1)])
-    print np_top_gene.shape
-    print top_gene_trans.shape
-    print len(top_by_cell.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
-    for label, x, y in zip(top_by_cell.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
+
+    print len(top_by_gene.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
+    for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
         ax.annotate(label, (x, y))
     plt.show()
     plt.savefig(os.path.join(path_to_file,'skpca_2.png'), bbox_inches='tight')
@@ -285,15 +299,24 @@ def plot_PCA(gene_list_filter, df_by_gene):
     sns.set_palette("RdBu_r", 10, 1)
     return top_pca_list
 
-def clust_heatmap(top_pca_list, df_by_gene, num_to_plot=75):
-    cg = sns.clustermap(df_by_gene[top_pca_list[0:num_to_plot]].transpose(), z_score=0)
+def clust_heatmap(top_pca_list, df_by_gene, num_to_plot=100):
+    sns.set_context("talk", font_scale=0.5)
+    cg = sns.clustermap(df_by_gene[top_pca_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(6, 9))
     plt.show()
-    plt.savefig(os.path.join(path_to_file,'clustermap_1.png'), bbox_inches='tight')
+    print cg.dendrogram_row.reordered_ind
+    print cg.dendrogram_col.reordered_ind
+    cg.savefig(os.path.join(path_to_file,'clustermap_1.png'), bbox_inches='tight')
 
-#plot_tree(row_dendr)
-'''cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(df_by_gene)
-cc = make_tree_json(row_clusters, df_by_gene)
-sig_gene_list = find_twobytwo(cc)
-top_pca = plot_PCA(sig_gene_list, df_by_gene)
-clust_heatmap(top_pca, df_by_gene)
-augmented_dendrogram(row_clusters, labels=cell_list, leaf_rotation=90, leaf_font_size=8)'''
+def clust_stability(log2exp_all, iterations=15):
+    pass
+gene_number= 100
+log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell)
+top_pca = plot_PCA(log2_expdf_gene, num_genes=gene_number)
+top_pca_by_gene = log2_expdf_gene[top_pca]
+top_pca_by_cell = top_pca_by_gene.transpose()
+cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
+cc = make_tree_json(row_clusters, top_pca_by_gene)
+
+sig_gene_list = find_twobytwo(cc, top_pca_by_cell)
+clust_heatmap(top_pca, top_pca_by_gene)
+augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
