@@ -24,7 +24,7 @@ start_file_name = 'ips17_BU3_cpm_outlier'
 make_go_matrix = False
 #choose metric and method for scipy clustering (also used in seaborn clustermap)
 metric='euclidean'
-method='ward'
+method='average'
 
 #load file gene
 by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,'BU3_ips17_normalized_cpm_outlier_filtered.txt'), sep='\t')
@@ -37,6 +37,20 @@ cell_list = [x for x in list(by_cell.columns.values)]
 
 df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
 df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
+hu_cc_gene_df = pd.DataFrame.from_csv('/Volumes/Seq_data/cell_cycle_genes.txt', sep='\t')
+
+def cell_cycle(cell_cycle_gene_df, df_by_gene):
+    gene_list = df_by_gene.columns.tolist()
+    for g_sym, alt_g_name in zip(cell_cycle_gene_df['Symbol'], cell_cycle_gene_df['Gene Name']):
+        if g_sym not in gene_list:
+            print g_sym
+            for g in alt_g_name.split(','):
+                if g.strip() in gene_list:
+                    cell_cycle_gene_df['Symbol'][g_sym] = g.strip()
+                else:
+                    cell_cycle_gene_df = cell_cycle_gene_df[cell_cycle_gene_df.Symbol != g_sym]
+    cc_gene_df = df_by_gene[cell_cycle_gene_df['Symbol']]
+    return cc_gene_df
 
 
 def make_new_matrix(org_matrix_by_cell, gene_list_file):
@@ -118,7 +132,7 @@ def run_cluster(by_gene_matrix):
     cell_list = [x for x in list(by_gene_matrix.index.values)]
     cell_dist = pdist(np.array(by_gene_matrix), metric='euclidean')
     row_dist = pd.DataFrame(squareform(cell_dist), columns=cell_list, index=cell_list)
-    row_clusters = linkage(cell_dist, metric=metric, method=average)
+    row_clusters = linkage(cell_dist, metric=metric, method='average')
     link_mat = pd.DataFrame(row_clusters,
                  columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
                  index=['cluster %d' %(i+1) for i in range(row_clusters.shape[0])])
@@ -265,8 +279,9 @@ def find_twobytwo(cc, df_by_cell, threshold_num = 14):
     sig_just_genes = [sig[0] for sig in sig_gene_list]
     return sig_just_genes
 
-def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False):
+def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title=''):
     gene_list = df_by_gene.columns.tolist()
+    sns.set_palette("RdBu_r", 10, 1)
     if gene_list_filter:
         sig_by_gene = df_by_gene[gene_list_filter]
     else:
@@ -285,38 +300,69 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False):
 
     top_gene_trans = clf_top.fit_transform(np_top_cell)
     plt.clf()
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(15, 16))
     ax.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
     ax.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0]+1)])
     ax.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1]+1)])
-
+    ax.set_title(title)
     print len(top_by_gene.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
     for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
         ax.annotate(label, (x, y))
     plt.show()
-    plt.savefig(os.path.join(path_to_file,'skpca_2.png'), bbox_inches='tight')
+    if title != '':
+        save_name = '_'.join(title.split(' ')[0:2])
+        plt.savefig(os.path.join(path_to_file,save_name+'_skpca.png'), bbox_inches='tight')
+    else:
+        plt.savefig(os.path.join(path_to_file,'non_group_skpca.png'), bbox_inches='tight')
     plt.clf()
-    sns.set_palette("RdBu_r", 10, 1)
     return top_pca_list
 
-def clust_heatmap(top_pca_list, df_by_gene, num_to_plot=100):
+def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title=''):
     sns.set_context("talk", font_scale=0.5)
-    cg = sns.clustermap(df_by_gene[top_pca_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(6, 9))
+    cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(15, 16))
+    cg.ax_heatmap.set_title(title)
     plt.show()
+    cell_linkage = cg.dendrogram_col.linkage
+    link_mat = pd.DataFrame(cell_linkage,
+                columns=['row label 1', 'row label 2', 'distance', 'no. of items in clust.'],
+                index=['cluster %d' %(i+1) for i in range(cell_linkage.shape[0])])
     print cg.dendrogram_row.reordered_ind
     print cg.dendrogram_col.reordered_ind
-    cg.savefig(os.path.join(path_to_file,'clustermap_1.png'), bbox_inches='tight')
+    if title != '':
+        save_name = '_'.join(title.split(' ')[0:2])
+        cg.savefig(os.path.join(path_to_file,save_name+'_heatmap.pdf'), bbox_inches='tight')
+    else:
+        cg.savefig(os.path.join(path_to_file,'Non_group_heatmap.pdf'), bbox_inches='tight')
+    return cell_linkage, df_by_gene[gene_list[0:num_to_plot]]
 
 def clust_stability(log2exp_all, iterations=15):
     pass
+
 gene_number= 100
-log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=True)
+log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
+cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
+
 top_pca = plot_PCA(log2_expdf_gene, num_genes=gene_number)
 top_pca_by_gene = log2_expdf_gene[top_pca]
 top_pca_by_cell = top_pca_by_gene.transpose()
-cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
-cc = make_tree_json(row_clusters, top_pca_by_gene)
+cell_linkage, plotted_df_by_gene = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number)
+#cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
+cc = make_tree_json(cell_linkage, plotted_df_by_gene)
 
-sig_gene_list = find_twobytwo(cc, top_pca_by_cell)
-clust_heatmap(top_pca, top_pca_by_gene)
-augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
+parent = cc[0][1]
+p_num = cc[0][0]
+l_nums = [x[0] for x in cc]
+c_lists = [c[1] for c in cc[1:]]
+group_ID = 0
+for num_members, cell_list in zip(l_nums, c_lists):
+    if num_members < p_num and num_members >= p_num/4:
+        print num_members, cell_list, p_num
+        group_ID+=1
+        title = 'Group '+str(group_ID)+' with '+str(num_members)+' cells'
+        cell_subset = log2_expdf_cell[cell_list]
+        top_pca = plot_PCA(cell_subset.transpose(), num_genes=gene_number, title=title)
+        top_pca_by_gene = log2_expdf_gene[top_pca]
+        top_pca_by_cell = top_pca_by_gene.transpose()
+        cell_linkage, plotted_df_by_gene = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number, title=title)
+#sig_gene_list = find_twobytwo(cc, plotted_df_by_gene.transpose())
+#augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
