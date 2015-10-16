@@ -25,7 +25,7 @@ path_to_file = '/Volumes/Seq_data/count-picard_combined_ips17_BU3'
 #for labeling all output files
 start_file_name = 'ips17_BU3_cpm_outlier'
 
-filename = os.path.join(path_to_file, start_file_name+'subgroups')
+filename = os.path.join(path_to_file, start_file_name+'subgroups_400')
 call('mkdir -p '+filename, shell=True)
 
 make_go_matrix = False
@@ -325,7 +325,11 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
     return top_pca_list
 
 def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', plot=False):
-    sns.set_context("talk", font_scale=0.5)
+    if num_to_plot >175:
+        font_scale = 0.8/(num_to_plot/10)
+    else:
+        font_scale = 0.55
+    sns.set_context("talk", font_scale=font_scale)
     cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(15, 16))
     cg.ax_heatmap.set_title(title)
     if plot:
@@ -365,7 +369,7 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             if gene_corr_list:
                 top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
                 corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
-            cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number, title=title, plot=False)
+            cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=125, title=title, plot=False)
             plt.close()
 
 def clust_stability(log2_expdf_gene, iterations=16):
@@ -398,8 +402,9 @@ def clust_stability(log2_expdf_gene, iterations=16):
     ax1.set_ylabel('Running ratio (new/last)')
     sns.barplot(x, y2, palette="RdBu_r", ax=ax2)
     ax2.set_ylabel('Ratio to 100')
-    plt.show()
     plt.savefig(os.path.join(filename,'clustering_stability.pdf'), bbox_inches='tight')
+    plt.show()
+    plt.close()
     return stability_ratio
 
 #run correlation matrix and save only those above threshold
@@ -501,9 +506,9 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
         plt.savefig(os.path.join(filename, title+'_corr_with_'+term_to_search+'.pdf'), bbox_inches='tight')
         plt.close()
 
-gene_number= 100
+gene_number= 400
 log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
-#stability_ratio = clust_stability(log2_expdf_gene)
+stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
 cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
 
@@ -513,6 +518,6 @@ top_pca_by_cell = top_pca_by_gene.transpose()
 cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-make_subclusters(cc, log2_expdf_cell, gene_corr_list=['NKX2-1'])
+make_subclusters(cc, log2_expdf_cell, gene_corr_list=['NKX2-1', 'COL19A1'])
 #sig_gene_list = find_twobytwo(cc, plotted_df_by_gene.transpose())
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
