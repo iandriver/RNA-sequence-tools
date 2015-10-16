@@ -326,7 +326,7 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
 
 def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', plot=False):
     if num_to_plot >175:
-        font_scale = 0.8/(num_to_plot/10)
+        font_scale = 0.8/(num_to_plot/100)
     else:
         font_scale = 0.55
     sns.set_context("talk", font_scale=font_scale)
