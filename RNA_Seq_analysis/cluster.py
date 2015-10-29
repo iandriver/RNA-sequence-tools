@@ -21,11 +21,11 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/count-picard_combined_ips17_BU3'
+path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_combined_rename'
 #for labeling all output files
-start_file_name = 'ips17_BU3_cpm_outlier'
+base_name = 'hu_HT280_combined_renamed'
 
-filename = os.path.join(path_to_file, start_file_name+'subgroups_400')
+filename = os.path.join(path_to_file, base_name+'subgroups_400')
 call('mkdir -p '+filename, shell=True)
 
 make_go_matrix = False
@@ -34,7 +34,7 @@ metric='euclidean'
 method='average'
 
 #load file gene
-by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,'BU3_ips17_normalized_cpm_outlier_filtered.txt'), sep='\t')
+by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,base_name+'_outlier_filtered.txt'), sep='\t')
 by_gene = by_cell.transpose()
 #create list of genes
 gene_list = by_cell.index.tolist()
@@ -108,7 +108,7 @@ np_by_cell, n_gene_list = preprocess_df(np_by_cell2, gen_list)
 df_by_gene = pd.DataFrame(np_by_cell.transpose(), index = df_by_cell2.columns.values, columns= n_gene_list)
 df_by_cell = df_by_gene.transpose()
 
-def log2_oulierfilter(df_by_cell, log2_cutoff = 1.5, plot=False):
+def log2_oulierfilter(df_by_cell, log2_cutoff = 0.3, plot=False):
     log2_df = np.log2(df_by_cell+1)
     log2_df2= pd.DataFrame(log2_df.convert_objects(convert_numeric=True))
     log_mean = log2_df.mean(axis=0).order(ascending=False)
@@ -116,6 +116,7 @@ def log2_oulierfilter(df_by_cell, log2_cutoff = 1.5, plot=False):
     xticks = []
     keep_col= []
     for col, m in zip(log2_sorted.columns.tolist(),log2_sorted.mean()):
+        print m
         if m > log2_cutoff:
             keep_col.append(col)
             xticks.append(col+' '+str("%.2f" % m))
@@ -347,7 +348,7 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
     plt.close()
     return cell_linkage, df_by_gene[gene_list[0:num_to_plot]], col_order
 
-def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot=4, filename=filename, start_file_name=start_file_name):
+def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot=4, filename=filename, base_name=base_name):
     parent = cc[0][1]
     p_num = cc[0][0]
     l_nums = [x[0] for x in cc]
@@ -362,7 +363,7 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             gene_subset = cell_subset.transpose()
             norm_df_cell1 = np.exp2(cell_subset)
             norm_df_cell = norm_df_cell1 -1
-            norm_df_cell.to_csv(os.path.join(filename, start_file_name+'_'+title+'_matrix.txt'), sep = '\t', index_col=0)
+            norm_df_cell.to_csv(os.path.join(filename, base_name+'_'+title+'_matrix.txt'), sep = '\t', index_col=0)
             top_pca = plot_PCA(gene_subset, num_genes=gene_number, title=title, plot=False)
             top_pca_by_gene = gene_subset[top_pca]
             top_pca_by_cell = top_pca_by_gene.transpose()
@@ -373,6 +374,7 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             plt.close()
 
 def clust_stability(log2_expdf_gene, iterations=16):
+    font_scale = 0.9
     sns.set_palette("RdBu_r")
     stability_ratio = []
     total_genes = len(log2_expdf_gene.columns.tolist())
@@ -518,6 +520,6 @@ top_pca_by_cell = top_pca_by_gene.transpose()
 cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-make_subclusters(cc, log2_expdf_cell, gene_corr_list=['NKX2-1', 'COL19A1'])
+make_subclusters(cc, log2_expdf_cell, gene_corr_list=['NKX2-1', 'HOPX'])
 #sig_gene_list = find_twobytwo(cc, plotted_df_by_gene.transpose())
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
