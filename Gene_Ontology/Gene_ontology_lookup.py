@@ -15,8 +15,18 @@ from pprint import pprint
 Entrez.email = "ian.driver@ucsf.edu"
 
 path_to_file ='/Volumes/Seq_data/Pdgfra2_all_fpkm_analysis'
-path_to_gojson ="/Users/idriver/Documents"
+path_to_gojson ="/Volumes/Seq_data"
+species = raw_input('Enter species (human or mouse): ')
+gene_input = raw_input('Enter gene name(s): ')
 
+if species == 'human':
+    entrez_species = 'Homo sapiens'
+    go_json='hu_gene_go.json'
+elif species == 'mouse':
+    entrez_species = 'Mus musculus'
+    go_json='gene_gos.json'
+
+print go_json
 fpgenelist = open(os.path.join(path_to_file,'fpkm_cuff_pdgfra2_outlier_gene_list.p'), 'rb')
 gene_list = pickle.load(fpgenelist)
 fpgenelist.close()
@@ -30,7 +40,7 @@ def singular_gene_list(path='/Users/idriver/RockLab-files/pdgfra/', file = 'pdgf
   return final_list
 
 
-def check_ids(id_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+def check_ids(id_list, filename=os.path.join(path_to_gojson, go_json)):
     print id_list, 'check_ids'
     already_known = []
     if os.path.isfile(filename):
@@ -52,7 +62,7 @@ def get_gene(gene_list):
     new_gene_list, already_known = check_ids(gene_list)
     gene_id_list = []
     for g_term in new_gene_list:
-        g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+g_term+'[sym]')
+        g_handle = Entrez.esearch(db ='gene', term=entrez_species+"[Orgn] AND "+g_term+'[sym]')
         g_record = Entrez.read(g_handle)
         gene_id = g_record["IdList"]
         if gene_id != []:
@@ -114,7 +124,7 @@ def retrieve_annotation(id_list):
   # {Function_type2: [GOterm3, GOterm4]}]}
   return goterms
 
-def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+def return_json(gene_list, filename=os.path.join(path_to_gojson, go_json)):
     id_list, already_known = get_gene(gene_list)
     if id_list != []:
         GO_json = json.dumps(retrieve_annotation(id_list))
@@ -133,12 +143,12 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
             with open(filename, 'w') as f2:
                 json.dump(data, f2)
     else:
-        with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
-            go_json = json.load(gg2)
+        with open(filename, 'rw') as gg2:
+            go_json_file = json.load(gg2)
         for g in already_known:
-            pprint(go_json[g])
+            pprint(go_json_file[g])
 
 
-gene_input = raw_input('Enter gene name(s): ')
+
 gene_to_search = [str(gene_input)]
 return_json(gene_to_search)

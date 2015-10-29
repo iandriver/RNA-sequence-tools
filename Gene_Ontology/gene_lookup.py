@@ -16,7 +16,14 @@ from collections import OrderedDict
 Entrez.email = "ian.driver@ucsf.edu"
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/cuffnorm_sca_spc_d0_4_7_spc'
+path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_combined_rename'
+species = 'human'
+if species == 'human':
+    entrez_species = 'Homo sapiens'
+    go_json='hu_gene_go.json'
+elif species == 'mouse':
+    entrez_species = 'Mus musculus'
+    go_json='gene_gos.json'
 #where the json gene ontology database is stored
 path_to_gojson ="/Volumes/Seq_data"
 #name of file containing gene
@@ -26,7 +33,7 @@ use_gene_file = False
 gene_file_source = 'go_search_genes_lung_all.txt'
 #if you want to update the database change to True
 update = False
-base_name = 'sca_d0_4_7'
+base_name = 'hu_ht280_combined_renamed'
 
 #load file gene
 by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
@@ -57,7 +64,7 @@ if use_gene_file:
 else:
     g_list = by_cell.index.tolist()
 
-def check_ids(id_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+def check_ids(id_list, filename=os.path.join(path_to_gojson, go_json)):
     already_known = []
     if os.path.isfile(filename):
         with open(filename, 'r') as gg2:
@@ -77,7 +84,7 @@ def get_gene(gene_list):
     new_gene_list, already_known = check_ids(gene_list)
     gene_id_list = []
     for g_term in new_gene_list:
-        g_handle = Entrez.esearch(db ='gene', term="Mus musculus[Orgn] AND "+g_term+'[sym]')
+        g_handle = Entrez.esearch(db ='gene', term=entrez_species+"[Orgn] AND "+g_term+'[sym]')
         g_record = Entrez.read(g_handle)
         gene_id = g_record["IdList"]
         if gene_id != []:
@@ -91,54 +98,57 @@ def get_gene(gene_list):
 def retrieve_annotation(id_list):
   goterms = OrderedDict()
   handle = Entrez.efetch(db='gene', id=",".join(id_list), retype='gb', retmode='xml')
-  all_records = Entrez.parse(handle, 'genebank', validate=False)
+  all_records = Entrez.parse(handle, 'genebank')
   for record in all_records:
-    for rec in record['Entrezgene_properties']:
-      for i, k in rec.items():
-        if i == 'Gene-commentary_properties':
-          for n in k:
-            sym_check = False
-            for ni1, n1 in n.items():
-              if n1 == 'Official Symbol':
-                sym_check = True
-              if ni1 =='Gene-commentary_text' and sym_check:
-                #Finds the gene name (symbol or short version) and adds an empty list
-                #in the goterms dictionary.  Changes sym_check to false so only
-                #the one gene name is created for that gene
-                gene_name = n1
-                goterms[gene_name]= []
+    try:
+        for rec in record['Entrezgene_properties']:
+          for i, k in rec.items():
+            if i == 'Gene-commentary_properties':
+              for n in k:
                 sym_check = False
-        if i == 'Gene-commentary_comment':
-          for k2 in k:
-            #there are three gene ontology types in NCBI gene database:
-            #Function, Process, and Component.  The gotype dict will
-            #store each go term under its type
-            gotype= OrderedDict()
-            for i3, k3 in k2.items():
-              if i3 == 'Gene-commentary_label':
-                gotype_name = k3
-                gotype[gotype_name] = []
-                goterms[gene_name].append(gotype)
-              if i3 == 'Gene-commentary_comment':
-                for k4 in k3:
-                  for i5, k5 in k4.items():
-                    if i5 == 'Gene-commentary_source':
-                      for k6 in k5:
-                        for i7, k7 in k6.items():
-                          if i7 == 'Other-source_anchor':
-                            gotype[gotype_name].append(k7)
-            #reduce the Go terms to a set to remove dublicate entries
-            set_type = list(Set(gotype[gotype_name]))
-            gotype[gotype_name]= set_type
-            #only add the gotype once
-            if gotype not in goterms[gene_name]:
-              goterms[gene_name].append(gotype)
-  #this function returns a dictionary of gene names each with a list of dicts
-  #with GO terms by type example {gene1: [{Function_type1: [GOterm1, GOterm2]},
-  # {Function_type2: [GOterm3, GOterm4]}]}
+                for ni1, n1 in n.items():
+                  if n1 == 'Official Symbol':
+                    sym_check = True
+                  if ni1 =='Gene-commentary_text' and sym_check:
+                    #Finds the gene name (symbol or short version) and adds an empty list
+                    #in the goterms dictionary.  Changes sym_check to false so only
+                    #the one gene name is created for that gene
+                    gene_name = n1
+                    goterms[gene_name]= []
+                    sym_check = False
+            if i == 'Gene-commentary_comment':
+              for k2 in k:
+                #there are three gene ontology types in NCBI gene database:
+                #Function, Process, and Component.  The gotype dict will
+                #store each go term under its type
+                gotype= OrderedDict()
+                for i3, k3 in k2.items():
+                  if i3 == 'Gene-commentary_label':
+                    gotype_name = k3
+                    gotype[gotype_name] = []
+                    goterms[gene_name].append(gotype)
+                  if i3 == 'Gene-commentary_comment':
+                    for k4 in k3:
+                      for i5, k5 in k4.items():
+                        if i5 == 'Gene-commentary_source':
+                          for k6 in k5:
+                            for i7, k7 in k6.items():
+                              if i7 == 'Other-source_anchor':
+                                gotype[gotype_name].append(k7)
+                #reduce the Go terms to a set to remove dublicate entries
+                set_type = list(Set(gotype[gotype_name]))
+                gotype[gotype_name]= set_type
+                #only add the gotype once
+                if gotype not in goterms[gene_name]:
+                  goterms[gene_name].append(gotype)
+      #this function returns a dictionary of gene names each with a list of dicts
+      #with GO terms by type example {gene1: [{Function_type1: [GOterm1, GOterm2]},
+      # {Function_type2: [GOterm3, GOterm4]}]}
+    except KeyError:
+        pass
   return goterms
 
-def update_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+def update_json(gene_list, filename=os.path.join(path_to_gojson, go_json)):
     id_list, already_known = get_gene(gene_list)
     if id_list != []:
         GO_json = json.dumps(retrieve_annotation(id_list))
@@ -157,7 +167,7 @@ def update_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
             with open(filename, 'w') as f2:
                 json.dump(data, f2)
 
-def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json')):
+def return_json(gene_list, filename=os.path.join(path_to_gojson, go_json)):
     id_list, already_known = get_gene(gene_list)
     if id_list != []:
         GO_json = json.dumps(retrieve_annotation(id_list))
@@ -176,28 +186,43 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, 'gene_gos.json'
             with open(filename, 'w') as f2:
                 json.dump(data, f2)
     else:
-        with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
-            go_json = json.load(gg2)
+        with open(filename, 'rw') as gg2:
+            go_json_file = json.load(gg2)
         for g in already_known:
-            return go_json[g]
+            pprint(go_json_file[g])
 
 
 if update:
     update_json(g_list)
-with open(os.path.join(path_to_gojson, 'gene_gos.json'), 'rw') as gg2:
+with open(os.path.join(path_to_gojson, go_json), 'rw') as gg2:
     go_json = json.load(gg2)
-go_search_term =[('Process', 'lung alveolus development'),
-                ('Process', 'lung morphogenesis'),
+go_search_term =[('Process', 'Type II pneumocyte differentiation'),
+                ('Process', 'lung alveolus development'),
                 ('Process', 'lung development'),
+                ('Process', 'Clara cell differentiation'),
+                ('Process', 'lung saccule development'),
+                ('Process', 'lung epithelium development'),
                 ('Process', 'mesenchymal-epithelial cell signaling'),
                 ('Process', 'establishment of planar polarity'),
+                ('Process', 'keratinocyte differentiation'),
+                ('Process', 'negative regulation of cellular senescence'),
+                ('Process', 'epithelial cell development'),
+                ('Process', 'positive regulation of mesenchymal cell proliferation'),
+                ('Process', 'negative regulation of epithelial to mesenchymal transition'),
+                ('Process', 'negative regulation of transforming growth factor beta receptor signaling pathway'),
+                ('Process', 'negative regulation of apoptotic process'),
+                ('Process', 'proximal/distal pattern formation'),
                 ('Component', 'alveolar lamellar body'),
                 ('Component', 'alveolar lamellar body membrane'),
                 ('Function', 'cytokine activity'),
                 ('Function', 'NF-kappaB binding'),
+                ('Process', 'cilium assembly'),
                 ('Component', 'integral component of membrane'),
                 ('Component', 'external side of plasma membrane'),
+                ('Component', 'keratin filament'),
                 ('Function', 'sequence-specific DNA binding transcription factor activity'),
+                ('Function', 'transcription regulatory region sequence-specific DNA binding'),
+                ('Function', 'transcription factor activity, sequence-specific DNA binding'),
                 ('Process','positive regulation of fibroblast migration'),
                 ('Process', 'positive regulation of cell migration'),
                 ('Process','tumor necrosis factor-mediated signaling pathway'),
@@ -219,7 +244,13 @@ go_search_term =[('Process', 'lung alveolus development'),
                 ('Process', 'negative regulation of JAK-STAT cascade'),
                 ('Process', 'negative regulation of inflammatory response'),
                 ('Process', 'cell migration'),
-                ('Function', 'phospholipase activity')]
+                ('Process', 'response to hyperoxia'),
+                ('Function', 'phospholipase activity'),
+                ('Process', 'lung saccule development'),
+                ('Process', 'Clara cell differentiation'),
+                ('Component', 'extracellular space'),
+                ('Component', 'extracellular region'),
+                ('Component', 'nucleus')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict =OrderedDict()
 search_term_list = []
