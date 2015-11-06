@@ -21,9 +21,9 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_combined_rename'
+path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_1_and_2'
 #for labeling all output files
-base_name = 'hu_HT280_combined_renamed'
+base_name = 'pdgfra2_all_n2'
 
 filename = os.path.join(path_to_file, base_name+'subgroups_400')
 call('mkdir -p '+filename, shell=True)
@@ -327,11 +327,10 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
 
 def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', plot=False):
     if num_to_plot >175:
-        font_scale = 0.8/(num_to_plot/100)
+        sns.set(context= 'poster', font_scale = 0.8/(num_to_plot/100))
     else:
-        font_scale = 0.55
-    sns.set_context("talk", font_scale=font_scale)
-    cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(15, 16))
+        sns.set(context= 'poster', font_scale = 0.55)
+    cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(15, 18))
     cg.ax_heatmap.set_title(title)
     if plot:
         plt.show()
@@ -348,7 +347,7 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
     plt.close()
     return cell_linkage, df_by_gene[gene_list[0:num_to_plot]], col_order
 
-def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot=4, filename=filename, base_name=base_name):
+def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot=6, filename=filename, base_name=base_name):
     parent = cc[0][1]
     p_num = cc[0][0]
     l_nums = [x[0] for x in cc]
@@ -374,7 +373,7 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             plt.close()
 
 def clust_stability(log2_expdf_gene, iterations=16):
-    font_scale = 0.9
+    sns.set(context='poster', font_scale = 1)
     sns.set_palette("RdBu_r")
     stability_ratio = []
     total_genes = len(log2_expdf_gene.columns.tolist())
@@ -510,7 +509,7 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
 
 gene_number= 400
 log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
-stability_ratio = clust_stability(log2_expdf_gene)
+#stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
 cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
 
@@ -520,6 +519,6 @@ top_pca_by_cell = top_pca_by_gene.transpose()
 cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-make_subclusters(cc, log2_expdf_cell, gene_corr_list=['NKX2-1', 'HOPX'])
+make_subclusters(cc, log2_expdf_cell, gene_corr_list=['Pdgfra', 'Jag1', 'Tcf21'])
 #sig_gene_list = find_twobytwo(cc, plotted_df_by_gene.transpose())
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
