@@ -6,8 +6,31 @@ import pandas as pd
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 
+#This section will take fpkm matrix input and make pandas dataframe
 
-def make_align(path, result_file_names, base_name):
+#path to fpkm file (usually cuffnorm output)
+path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_1_and_2'
+#default file name will use genes.fpkm_table from cuffnorm
+file_name = 'genes.fpkm_table'
+#provide base name for output files
+base_name ='pdgfra2_all_n2'
+#create pandas dataframe from fpkm files
+data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
+
+#This section is for making the alignment files
+
+
+#the name of the file or files that contain the results from alignment, in a list
+result_file_names = ['results_pdgfra_all_n2/results_Pdgfra-ctrl1', 'results_pdgfra_all_n2/results_Pdgfra-pnxd4', 'results_pdgfra_all_n2/results_Lane5_data', 'results_pdgfra_all_n2/results_Lane6_data', 'results_pdgfra_all_n2/results_Lane7_data', 'results_pdgfra_all_n2/results_Lane8_data']
+#create full path to output file
+path_to_align=os.path.join(path_to_file, 'results_'+base_name+'_align.p')
+#change to True to force creation of new alignment even if file of same name already exists
+run_even_if_align_exists = True
+
+
+def make_align(result_file_names, base_name, path_to_file=path_to_file):
+    #path to where the tophat result file or files are located, default is one level up from cuffnorm file
+    path = os.path.dirname(path_to_file)
     cell_list =[]
     align_dict =OrderedDict()
     align_dict['input_L_num'] = []
@@ -16,8 +39,8 @@ def make_align(path, result_file_names, base_name):
     align_dict['mapped_R_num'] = []
     align_dict['per_mapped'] = []
     for rf in result_file_names:
-        path_to_file = os.path.join(path, rf)
-        for root, dirnames, filenames in os.walk(path_to_file):
+        paths_from_list = os.path.join(path, rf)
+        for root, dirnames, filenames in os.walk(paths_from_list):
             for filename in fnmatch.filter(filenames, 'align_summary.txt'):
                 cell_name = (root.split('/')[-1])
                 cell_list.append(cell_name)
@@ -47,12 +70,12 @@ def make_align(path, result_file_names, base_name):
                 align_dict['per_mapped'].append(per_mapped)
                 f.close()
     align_df = pd.DataFrame(align_dict, index = cell_list)
-    align_df.to_csv(os.path.join(path,result_file_names[0],'results_'+base_name+'_align.txt'), sep = '\t')
+    align_df.to_csv(os.path.join(path_to_file,'results_'+base_name+'_align.txt'), sep = '\t')
 
     plt.hist(align_df['mapped_L_num'])
     plt.show()
 
-    with open(os.path.join(path,result_file_names[0],'results_'+base_name+'_align.p'), 'wb') as fp:
+    with open(os.path.join(path_to_file,'results_'+base_name+'_align.p'), 'wb') as fp:
       pickle.dump(align_df, fp)
 
 
@@ -213,33 +236,13 @@ def name_filtering(outlier_by_cell, outlier_cell_list):
                 outlier_fpkm_dict[cell_name] = [float(lx) for lx in l]
     return outlier_fpkm_dict
 
-#This section will take fpkm matrix input and make pandas dataframe
 
-#path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/counts_spc_d0_4_7'
-#default file name will use genes.fpkm_table from cuffnorm
-file_name = 'counts_spc_d0_4_7_count_table.txt'
-#provide base name for output files
-base_name ='counts_spc_d0_4_7'
-#create pandas dataframe from fpkm files
-data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
-
-#This section is for making the alignment files
-
-#path to where the tophat result file or files are located, default is one level up from cuffnorm file
-path = os.path.dirname(path_to_file)
-#the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_spc2_n2', 'results_SPC_d7']
-#create full path to output file
-path_to_align=os.path.join(path,result_file_names[0], 'results_'+base_name+'_align.p')
-#change to True to force creation of new alignment even if file of same name already exists
-run_even_if_align_exists = True
 #if alignment file doesn't already exist run make alignment file
 if not os.path.isfile(path_to_align):
-    make_align(path, result_file_names, base_name)
+    make_align(result_file_names, base_name)
 #if make new file is True
 elif run_even_if_align_exists:
-    make_align(path, result_file_names, base_name)
+    make_align(result_file_names, base_name)
 else:
     pass
 #create cells to delete list. name_filter is an option for renaming if filenames are different between tophat and cuffnorm
