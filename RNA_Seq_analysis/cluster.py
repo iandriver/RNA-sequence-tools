@@ -21,11 +21,11 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_1_and_2'
+path_to_file = '/Volumes/Seq_data/count-picard_js_SC_1_2_3_5'
 #for labeling all output files
-base_name = 'pdgfra2_all_n2'
+base_name = 'js_SC_1_2_3_5'
 
-filename = os.path.join(path_to_file, base_name+'subgroups_400')
+filename = os.path.join(path_to_file, base_name+'subgroups_200')
 call('mkdir -p '+filename, shell=True)
 
 make_go_matrix = False
@@ -34,7 +34,10 @@ metric='euclidean'
 method='average'
 
 #load file gene
-by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,base_name+'_outlier_filtered.txt'), sep='\t')
+if path_to_file.split('/')[-1][0:8] == 'cuffnorm':
+    by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,base_name+'_outlier_filtered.txt'), sep='\t')
+elif path_to_file.split('/')[-1][0:5] == 'count':
+    by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file,base_name+'_normalized_cpm_all.txt'), sep='\t')
 by_gene = by_cell.transpose()
 #create list of genes
 gene_list = by_cell.index.tolist()
@@ -289,6 +292,7 @@ def find_twobytwo(cc, df_by_cell, threshold_num = 14):
 
 def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=False):
     gene_list = df_by_gene.columns.tolist()
+    print len(gene_list)
     sns.set_palette("RdBu_r", 10, 1)
     if gene_list_filter:
         sig_by_gene = df_by_gene[gene_list_filter]
@@ -369,7 +373,7 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             if gene_corr_list:
                 top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
                 corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
-            cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=125, title=title, plot=False)
+            cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number, title=title, plot=False)
             plt.close()
 
 def clust_stability(log2_expdf_gene, iterations=16):
@@ -507,7 +511,7 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
         plt.savefig(os.path.join(filename, title+'_corr_with_'+term_to_search+'.pdf'), bbox_inches='tight')
         plt.close()
 
-gene_number= 400
+gene_number= 200
 log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
 #stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
@@ -519,6 +523,6 @@ top_pca_by_cell = top_pca_by_gene.transpose()
 cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-make_subclusters(cc, log2_expdf_cell, gene_corr_list=['Pdgfra', 'Jag1', 'Tcf21'])
+make_subclusters(cc, log2_expdf_cell, gene_corr_list=['Krt7', 'Dpt'])
 #sig_gene_list = find_twobytwo(cc, plotted_df_by_gene.transpose())
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
