@@ -21,14 +21,17 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/count-picard_js_SC_1_2_3_5'
+path_to_file = '/Volumes/Seq_data/cuffnorm_js_SC_1_2_3_5'
 #for labeling all output files
 base_name = 'js_SC_1_2_3_5'
 
-filename = os.path.join(path_to_file, base_name+'subgroups_200')
+filename = os.path.join(path_to_file, base_name+'subgroups_200_E15unsorted')
 call('mkdir -p '+filename, shell=True)
 
 make_go_matrix = False
+make_cell_matrix = True
+cell_file = 'E15.5_unsorted.txt'
+cell_file_source = os.path.join(path_to_file, cell_file)
 #choose metric and method for scipy clustering (also used in seaborn clustermap)
 metric='euclidean'
 method='average'
@@ -63,12 +66,12 @@ def cell_cycle(cell_cycle_gene_df, df_by_gene):
     return cc_gene_df
 
 
-def make_new_matrix(org_matrix_by_cell, gene_list_file):
+def make_new_matrix_gene(org_matrix_by_gene, gene_list_file):
     split_on='_'
     gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
     gene_list = gene_df['GeneID'].tolist()
     group_list = gene_df['GroupID'].tolist()
-    gmatrix_df = org_matrix_by_cell[gene_list]
+    gmatrix_df = org_matrix_by_gene[gene_list]
     cmatrix_df = gmatrix_df.transpose()
     cell_list1 = []
     for cell in cmatrix_df.columns.values:
@@ -82,8 +85,26 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     new_cmatrix_df = cmatrix_df[cell_list1]
     new_gmatrix_df = new_cmatrix_df.transpose()
     return new_cmatrix_df, new_gmatrix_df
+
+def make_new_matrix_cell(org_matrix_by_cell, cell_list_file):
+    cell_df = pd.read_csv(os.path.join(path_to_file, cell_list_file), delimiter= '\t')
+    cell_list_new = [cell.strip('\n') for cell in cell_df['Sample ID'].tolist()]
+    cell_list_old = org_matrix_by_cell.columns.values
+    cell_list = [c for c in cell_list_new if c in cell_list_old]
+    timepoint = cell_df['Timepoint'].tolist()
+    cell_type = cell_df['Type'].tolist()
+    new_cmatrix_df = org_matrix_by_cell[cell_list]
+    new_name_list = ['_'.join([x,y,z]) for x,y,z in zip(cell_list,timepoint,cell_type)]
+    new_name_dict = {k:v for k,v in zip(cell_list,new_name_list)}
+    print new_name_dict
+    new_cmatrix_df = new_cmatrix_df.rename(columns = new_name_dict)
+    new_gmatrix_df = new_cmatrix_df.transpose()
+    return new_cmatrix_df, new_gmatrix_df
+
 if make_go_matrix:
-    df_by_cell2, df_by_gene2 = make_new_matrix(df_by_gene1, gene_file_source)
+    df_by_cell2, df_by_gene2 = make_new_matrix_gene(df_by_gene1, gene_file_source)
+if make_cell_matrix:
+    df_by_cell2, df_by_gene2 = make_new_matrix_cell(df_by_cell1, cell_file_source)
 else:
     df_by_cell2, df_by_gene2 = df_by_cell1, df_by_gene1
 
@@ -300,41 +321,45 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
         sig_by_gene = df_by_gene
     clf = skPCA(3)
     np_by_gene = np.asarray(sig_by_gene)
-    by_gene_trans = clf.fit_transform(np_by_gene)
-    Pc_df = pd.DataFrame(clf.components_.T, columns=['PC-1', 'PC-2', 'PC-3'], index=sig_by_gene.columns.tolist())
-    pca_rank_df = Pc_df.abs().sum(axis=1)
-    Pc_sort_df = pca_rank_df.nlargest(len(sig_by_gene.columns.tolist()))
-    top_pca_list = Pc_sort_df.index.tolist()
-    print top_pca_list[0:num_genes], 'top_pca_list'
-    top_by_gene = df_by_gene[top_pca_list[0:num_genes]]
-    clf_top = skPCA(n_components=2)
-    np_top_cell = np.asarray(top_by_gene.transpose())
+    try:
+        by_gene_trans = clf.fit_transform(np_by_gene)
+        Pc_df = pd.DataFrame(clf.components_.T, columns=['PC-1', 'PC-2', 'PC-3'], index=sig_by_gene.columns.tolist())
+        pca_rank_df = Pc_df.abs().sum(axis=1)
+        Pc_sort_df = pca_rank_df.nlargest(len(sig_by_gene.columns.tolist()))
+        top_pca_list = Pc_sort_df.index.tolist()
+        print top_pca_list[0:num_genes], 'top_pca_list'
+        top_by_gene = df_by_gene[top_pca_list[0:num_genes]]
+        clf_top = skPCA(n_components=2)
+        np_top_cell = np.asarray(top_by_gene.transpose())
 
-    top_gene_trans = clf_top.fit_transform(np_top_cell)
-    fig, ax = plt.subplots(figsize=(15, 16))
-    ax.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
-    ax.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0]+1)])
-    ax.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1]+1)])
-    ax.set_title(title)
-    print len(top_by_gene.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
-    for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
-        ax.annotate(label, (x, y))
-    if plot:
-        plt.show()
-    if title != '':
-        save_name = '_'.join(title.split(' ')[0:2])
-        plt.savefig(os.path.join(filename,save_name+'_skpca.pdf'), bbox_inches='tight')
-    else:
-        plt.savefig(os.path.join(filename,'non_group_skpca.pdf'), bbox_inches='tight')
-    plt.close()
-    return top_pca_list
+        top_gene_trans = clf_top.fit_transform(np_top_cell)
+        fig, ax = plt.subplots(figsize=(15, 16))
+        ax.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
+        ax.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0]+1)])
+        ax.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1]+1)])
+        ax.set_title(title)
+        print len(top_by_gene.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
+        for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
+            ax.annotate(label, (x, y))
+        if plot:
+            plt.show()
+        if title != '':
+            save_name = '_'.join(title.split(' ')[0:2])
+            plt.savefig(os.path.join(filename,save_name+'_skpca.pdf'), bbox_inches='tight')
+        else:
+            plt.savefig(os.path.join(filename,'non_group_skpca.pdf'), bbox_inches='tight')
+        plt.close()
+        return top_pca_list
+    except:
+        print 'SVD did not converge: PCA'
+        return []
 
 def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', plot=False):
     if num_to_plot >175:
-        sns.set(context= 'poster', font_scale = 0.8/(num_to_plot/100))
+        sns.set(context= 'poster', font_scale = 0.65/(num_to_plot/100))
     else:
-        sns.set(context= 'poster', font_scale = 0.55)
-    cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(15, 18))
+        sns.set(context= 'poster', font_scale = 0.37)
+    cg = sns.clustermap(df_by_gene[gene_list[0:num_to_plot]].transpose(), metric=metric, method=method, z_score=0, figsize=(12, 20))
     cg.ax_heatmap.set_title(title)
     if plot:
         plt.show()
@@ -368,13 +393,16 @@ def make_subclusters(cc, log2_expdf_cell, gene_corr_list=False, fraction_to_plot
             norm_df_cell = norm_df_cell1 -1
             norm_df_cell.to_csv(os.path.join(filename, base_name+'_'+title+'_matrix.txt'), sep = '\t', index_col=0)
             top_pca = plot_PCA(gene_subset, num_genes=gene_number, title=title, plot=False)
-            top_pca_by_gene = gene_subset[top_pca]
-            top_pca_by_cell = top_pca_by_gene.transpose()
-            if gene_corr_list:
-                top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
-                corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
-            cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number, title=title, plot=False)
-            plt.close()
+            if top_pca != []:
+                top_pca_by_gene = gene_subset[top_pca]
+                top_pca_by_cell = top_pca_by_gene.transpose()
+                if gene_corr_list:
+                    top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
+                    corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
+                cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=gene_number, title=title, plot=False)
+                plt.close()
+            else:
+                pass
 
 def clust_stability(log2_expdf_gene, iterations=16):
     sns.set(context='poster', font_scale = 1)
@@ -476,40 +504,44 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
             print c
         to_plot = [x[0] for x in corr_tup]
         sns.set_palette(sns.cubehelix_palette(len(to_plot), start=1, rot=-.9, reverse=True))
-        sorted_df = df_by_gene.sort([term_to_search])
-        log2_df = np.log2(df_by_gene[to_plot])
-        sorted_log2_df=np.log2(sorted_df[to_plot])
-        ylabel='CPM (log2)'
-        if sort and log:
-            ax = sorted_log2_df.plot()
-            xlabels = sorted_log2_df[to_plot].index.values
-        elif sort:
-            ax =sorted_df[to_plot].plot()
-            xlabels = sorted_df[to_plot].index.values
-        elif log:
-            ax = log2_df.plot()
-            ylabel= 'log2 FPKM'
-            xlabels = log2_df.index.values
-        else:
-            ax = df_by_gene[to_plot].plot()
-            xlabels = df_by_gene[to_plot].index.values
-        ax.set_xlabel('Cell #')
-        ax.set_ylabel(ylabel)
-        ax.set_title('Correlates with '+term_to_search, loc='right')
-        ax.xaxis.set_minor_locator(LinearLocator(numticks=len(xlabels)))
-        ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
-        ax.set_ylim([0, df_by_gene[to_plot].values.max()])
-        ax.tick_params(axis='x', labelsize=1)
-        if len(corr_tup) > 15:
-            l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
-            ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=6, prop={'size':6})
-        else:
-            l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
-            ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
-        fig = plt.gcf()
-        fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
-        plt.savefig(os.path.join(filename, title+'_corr_with_'+term_to_search+'.pdf'), bbox_inches='tight')
-        plt.close()
+        try:
+            sorted_df = df_by_gene.sort([term_to_search])
+            log2_df = np.log2(df_by_gene[to_plot])
+            sorted_log2_df=np.log2(sorted_df[to_plot])
+            ylabel='CPM (log2)'
+            if sort and log:
+                ax = sorted_log2_df.plot()
+                xlabels = sorted_log2_df[to_plot].index.values
+            elif sort:
+                ax =sorted_df[to_plot].plot()
+                xlabels = sorted_df[to_plot].index.values
+            elif log:
+                ax = log2_df.plot()
+                ylabel= 'log2 FPKM'
+                xlabels = log2_df.index.values
+            else:
+                ax = df_by_gene[to_plot].plot()
+                xlabels = df_by_gene[to_plot].index.values
+            ax.set_xlabel('Cell #')
+            ax.set_ylabel(ylabel)
+            ax.set_title('Correlates with '+term_to_search, loc='right')
+            ax.xaxis.set_minor_locator(LinearLocator(numticks=len(xlabels)))
+            ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
+            ax.set_ylim([0, df_by_gene[to_plot].values.max()])
+            ax.tick_params(axis='x', labelsize=1)
+            if len(corr_tup) > 15:
+                l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
+                ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=6, prop={'size':6})
+            else:
+                l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
+                ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
+            fig = plt.gcf()
+            fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
+            plt.savefig(os.path.join(filename, title+'_corr_with_'+term_to_search+'.pdf'), bbox_inches='tight')
+            plt.close()
+        except KeyError:
+            print term_to_search+' not in this matrix'
+            pass
 
 gene_number= 200
 log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
