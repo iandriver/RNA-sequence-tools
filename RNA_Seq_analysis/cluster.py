@@ -21,17 +21,22 @@ import itertools
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/cuffnorm_js_SC_1_2_3_5'
+path_to_file = '/Volumes/Seq_data/count-picard_js_SC_1_2_3_5'
 #for labeling all output files
 base_name = 'js_SC_1_2_3_5'
 
 filename = os.path.join(path_to_file, base_name+'subgroups_200_E15unsorted')
 call('mkdir -p '+filename, shell=True)
 
-make_go_matrix = False
+#if you want to restrict the genes inlcuded to a specific genelist, requires 'GeneID' and 'GroupID' header
+make_gene_matrix = False
+if make_gene_matrix:
+    gene_list_file = 'go_search_genes_lung_all.txt'
+#if you want to restrict the cell matrix file to a subset of cells, expects 'SampleID' header
 make_cell_matrix = True
-cell_file = 'E15.5_unsorted.txt'
-cell_file_source = os.path.join(path_to_file, cell_file)
+if make_cell_matrix:
+    cell_file = 'E15.5_unsorted.txt'
+    cell_file_source = os.path.join(path_to_file, cell_file)
 #choose metric and method for scipy clustering (also used in seaborn clustermap)
 metric='euclidean'
 method='average'
@@ -101,7 +106,7 @@ def make_new_matrix_cell(org_matrix_by_cell, cell_list_file):
     new_gmatrix_df = new_cmatrix_df.transpose()
     return new_cmatrix_df, new_gmatrix_df
 
-if make_go_matrix:
+if make_gene_matrix:
     df_by_cell2, df_by_gene2 = make_new_matrix_gene(df_by_gene1, gene_file_source)
 if make_cell_matrix:
     df_by_cell2, df_by_gene2 = make_new_matrix_cell(df_by_cell1, cell_file_source)
