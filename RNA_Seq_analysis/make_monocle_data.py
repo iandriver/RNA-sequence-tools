@@ -11,12 +11,12 @@ import numpy as np
 from operator import itemgetter
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_combined_rename'
+path_to_file = '/Users/idriver/RockLab-files/RNA-sequence-tools/Gene_Ontology/gene_lookup.py'
 #name of file containing gene
 gene_file_source = 'go_search_genes_lung_all.txt'
 plate_map = 'plate_map_grid.txt'
 
-base_name = 'hu_HT280_combined_renamed'
+base_name = 'hu_alpha6_ht280_combined'
 #load file gene
 by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
 by_gene = by_cell.transpose()
@@ -49,23 +49,28 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
     by_sample = sample_data.transpose()
     map_data = pd.read_csv(os.path.join(path_to_file, 'results_'+base_name+'_align.txt'), delimiter= '\t', index_col=0)
     by_cell_map = map_data.transpose()
-    loading_data = pd.read_csv(os.path.join(path_to_file, 'Cell_loading_hu_ht280_all.txt'), delimiter= '\t', index_col=0)
+    loading_data = pd.read_csv(os.path.join(path_to_file, 'Cell_loading_hu_ht280_alpha6_all.txt'), delimiter= '\t', index_col=0)
     l_data = loading_data.transpose()
     cell_list = gmatrix_df.index.tolist()
     cell_data = []
-    cell_label_dict ={'norm':('norm_ht280', 'ctrl'), 'scler':('scler_ht280', 'diseased'), 'IPF':('hu_IPF_HTII_280','diseased'), 'DK':('DK_ht280','diseased')}
+    cell_label_dict ={'norm':('norm_ht280', 'ctrl', 'norm'),
+                    'scler':('scler_ht280', 'diseased', 'scler'),
+                    'IPF':('hu_IPF_HTII_280','diseased', 'IPF'),
+                    'DK':('DK_ht280','diseased', 'DK'),
+                    'alpha6_norm':('norm_alpha6', 'ctrl', 'norm'),
+                    'alpha6_scler':('scler_alpha6', 'diseased', 'scler')}
     new_cell_list = []
     old_cell_list = []
     for cell in cell_list:
         match = False
-        if cell[0:4] == 'norm':
+        if cell[0:6] == 'norm_h':
             k = 'norm'
             tracking_id = cell
             match = True
             num = cell.split('_')[2]
             old_cell_list.append(cell)
             new_cell_list.append(tracking_id)
-        elif cell[0:5] == 'scler':
+        elif cell[0:7] == 'scler_h':
             k='scler'
             tracking_id = cell
             num = cell.split('_')[2]
@@ -86,8 +91,23 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
             match = True
             old_cell_list.append(cell)
             new_cell_list.append(tracking_id)
+        elif cell[0:7] == 'scler_a':
+            k = 'alpha6_scler'
+            tracking_id = cell
+            num = cell.split('_')[2]
+            match = True
+            old_cell_list.append(cell)
+            new_cell_list.append(tracking_id)
+        elif cell[0:6] == 'norm_a':
+            k = 'alpha6_norm'
+            tracking_id = cell
+            num = cell.split('_')[2]
+            match = True
+            old_cell_list.append(cell)
+            new_cell_list.append(tracking_id)
         if match:
             condition = cell_label_dict[k][1]
+            disease = cell_label_dict[k][2]
             loading_df = loading_data[cell_label_dict[k][0]]
             print ret_loading_pos(num, plate_map_df), num
             loading = loading_df.iloc[ret_loading_pos(num, plate_map_df)-1]
@@ -100,14 +120,14 @@ def make_new_matrix(org_matrix_by_cell, gene_list_file):
             total_mass = by_sample[cell+'_0'][1]
             input_mass = by_cell_map[cell][0]
             per_mapped = by_cell_map[cell][4]
-            c_data_tup = (tracking_id,total_mass,input_mass,per_mapped,condition,single_cell)
+            c_data_tup = (tracking_id,total_mass,input_mass,per_mapped,condition,disease,single_cell)
             print c_data_tup
             cell_data.append(c_data_tup)
     score_df.to_csv(os.path.join(path_to_file, 'gene_feature_data.txt'), sep = '\t', index=False)
     new_cmatrix_df = cmatrix_df[old_cell_list]
     new_cmatrix_df.columns = new_cell_list
     new_cmatrix_df.to_csv(os.path.join(path_to_file, 'goterms_monocle_count_matrix.txt'), sep = '\t', index_col=0)
-    cell_data_df = pd.DataFrame(cell_data, columns=['tracking_id','total_mass','input_mass','per_mapped','condition','single_cell'])
+    cell_data_df = pd.DataFrame(cell_data, columns=['tracking_id','total_mass','input_mass','per_mapped','condition','disease','single_cell'])
     cell_data_df.to_csv(os.path.join(path_to_file, 'cell_feature_data.txt'), sep = '\t', index=False)
 
 make_new_matrix(df_by_gene1, gene_file_source)
