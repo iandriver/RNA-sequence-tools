@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_1_and_2'
+path_to_file = '/Volumes/Seq_data/count-picard_js_SC_1_2_3_5'
 #default file name will use genes.fpkm_table from cuffnorm
-file_name = 'genes.fpkm_table'
+file_name = 'js_all_count_table.txt'
 #provide base name for output files
-base_name ='pdgfra2_all_n2'
+base_name ='js_SC_1_2_3_5_counts'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
@@ -21,7 +21,7 @@ data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
 
 #the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_pdgfra_all_n2/results_Pdgfra-ctrl1', 'results_pdgfra_all_n2/results_Pdgfra-pnxd4', 'results_pdgfra_all_n2/results_Lane5_data', 'results_pdgfra_all_n2/results_Lane6_data', 'results_pdgfra_all_n2/results_Lane7_data', 'results_pdgfra_all_n2/results_Lane8_data']
+result_file_names = ['results_sneddon_SC_1_2', 'results_sneddon_SC_3_5']
 #create full path to output file
 path_to_align=os.path.join(path_to_file, 'results_'+base_name+'_align.p')
 #change to True to force creation of new alignment even if file of same name already exists
@@ -175,14 +175,18 @@ def threshold_genes(by_gene, gen_list, number_expressed=3):
     g_todelete = []
     for g1, gene in enumerate(by_gene):
         cells_exp = (gene >= 1.0).sum()
+        if gen_list[g1][0] == '_':
+            g_todelete.append(g1)
         if cells_exp < number_expressed:
             g_todelete.append(g1)
-    g1_todelete = sorted(g_todelete, reverse = True)
+    g1_todelete = sorted(set(g_todelete), reverse = True)
     print by_gene.shape
     for pos in g1_todelete:
+        print len(gen_list), pos, '2'
         if type(gen_list[pos]) != float:
-            #print 'Gene '+gen_list[pos]+' not expressed in '+str(number_expressed)+' cells.'
-            pass
+            print len(gen_list), pos
+            print 'Gene '+gen_list[pos]+' not expressed in '+str(number_expressed)+' cells.'
+
         del gen_list[pos]
     n_by_gene = np.delete(by_gene, g1_todelete, axis=0)
     print n_by_gene.shape
@@ -275,7 +279,7 @@ bulk_ctrl_dict = OrderedDict()
 #detailed funtion to tailor any name filtering. Change to True and edit name_filtering function
 filter_on_lane = False
 #function for removing cells by name, will be processed as a seperate matrix file
-bulk = True
+bulk = False
 if filter_on_lane:
     outlier_fpkm_dict = name_filtering(outlier_by_cell, outlier_cell_list)
 else:
