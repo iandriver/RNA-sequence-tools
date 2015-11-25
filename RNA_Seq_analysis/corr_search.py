@@ -198,7 +198,7 @@ def corr_plot(term_to_search, log=plot_log, sort=plot_sort):
         ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=4, prop={'size':8})
     fig = plt.gcf()
     fig.subplots_adjust(bottom=0.08, top=0.95, right=0.98, left=0.03)
-    plt.savefig(os.path.join(path_to_file, start_file_name+'_corr_with_'+term_to_search), bbox_inches='tight')
+    plt.savefig(os.path.join(path_to_file, base_name+'_corr_with_'+term_to_search), bbox_inches='tight')
     plt.show()
 
 
