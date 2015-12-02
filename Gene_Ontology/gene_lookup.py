@@ -8,6 +8,7 @@ import json
 from pprint import pprint
 import pandas as pd
 from collections import OrderedDict
+from itertools import izip
 #Basic script for fetching gene ontology from Entrez
 #Starting with common gene names in a list 1) get_gene takes the list and returns gene ids that are suitable
 #for Entrez. 2) retrieve_annotation takes a gene id list and returns the gene ontology in a dict of dicts
@@ -16,8 +17,8 @@ from collections import OrderedDict
 Entrez.email = "ian.driver@ucsf.edu"
 
 #the file path where gene list will be and where new list will output
-path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_combined_rename'
-species = 'human'
+path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_ctrl_only'
+species = 'mouse'
 if species == 'human':
     entrez_species = 'Homo sapiens'
     go_json='hu_gene_go.json'
@@ -33,7 +34,7 @@ use_gene_file = False
 gene_file_source = 'go_search_genes_lung_all.txt'
 #if you want to update the database change to True
 update = False
-base_name = 'hu_ht280_combined_renamed'
+base_name = 'pdgfra_ctrl_only'
 
 #load file gene
 by_cell = pd.DataFrame.from_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep='\t')
@@ -191,6 +192,9 @@ def return_json(gene_list, filename=os.path.join(path_to_gojson, go_json)):
         for g in already_known:
             pprint(go_json_file[g])
 
+def compress(data, selectors):
+    # compress('ABCDEF', [1,0,1,0,1,1]) --> A C E F
+    return [d for d, s in izip(data, selectors) if s]
 
 if update:
     update_json(g_list)
@@ -208,6 +212,14 @@ go_search_term =[('Process', 'Type II pneumocyte differentiation'),
                 ('Process', 'negative regulation of cellular senescence'),
                 ('Process', 'epithelial cell development'),
                 ('Process', 'positive regulation of mesenchymal cell proliferation'),
+                ('Process', 'Notch signaling pathway'),
+                ('Process', 'Wnt signaling pathway'),
+                ('Process', 'negative regulation of fibroblast growth factor receptor signaling pathway'),
+                ('Process', 'negative regulation of epithelial cell proliferation',),
+                ('Process', 'non-canonical Wnt signaling pathway via JNK cascade'),
+                ('Process', 'canonical Wnt signaling pathway'),
+                ('Process', 'Wnt signaling pathway, calcium modulating pathway'),
+                ('Process', 'activation of JUN kinase activity'),
                 ('Process', 'negative regulation of epithelial to mesenchymal transition'),
                 ('Process', 'negative regulation of transforming growth factor beta receptor signaling pathway'),
                 ('Process', 'negative regulation of apoptotic process'),
@@ -228,10 +240,19 @@ go_search_term =[('Process', 'Type II pneumocyte differentiation'),
                 ('Process','tumor necrosis factor-mediated signaling pathway'),
                 ('Process', 'negative regulation of inflammatory response'),
                 ('Process', 'regulation of inflammatory response'),
+                ('Process', 'activation of MAPK activity'),
+                ('Process', 'cell fate commitment'),
+                ('Process', 'midgut development'),
+                ('Process', 'positive regulation of type I interferon-mediated signaling pathway',),
                 ('Process', 'negative regulation of Notch signaling pathway'),
+                ('Process', 'positive regulation of interleukin-6 production'),
+                ('Process', 'positive regulation of NF-kappaB transcription factor activity'),
+                ('Process', 'positive regulation of cytokine secretion involved in immune response'),
+                ('Process', 'establishment of planar polarity',),
                 ('Component', 'extracellular matrix'),
                 ('Process', 'lipid storage'),
                 ('Process', 'liver development'),
+                ('Process', 'fibroblast growth factor receptor signaling pathway'),
                 ('Process', 'kidney development'),
                 ('Function','extracellular matrix structural constituent'),
                 ('Process', 'regulation of MAPK cascade'),
@@ -248,29 +269,53 @@ go_search_term =[('Process', 'Type II pneumocyte differentiation'),
                 ('Function', 'phospholipase activity'),
                 ('Process', 'lung saccule development'),
                 ('Process', 'Clara cell differentiation'),
+                ('Component', 'integral component of plasma membrane'),
+                ('Function', 'RNA binding'),
+                ('Function', 'protein binding',),
+                ('Function', 'chromatin binding'),
+                ('Process', 'gene expression'),
+                ('Component', 'cytosol'),
+                ('Component', 'cytoplasm'),
                 ('Component', 'extracellular space'),
                 ('Component', 'extracellular region'),
-                ('Component', 'nucleus')]
+                ('Component', 'nucleus'),
+                ('Component', 'plasma membrane'),
+                ('Component', 'membrane')]
 term_index =['Function', 'Process', 'Component']
 search_term_dict =OrderedDict()
 search_term_list = []
 search_term_dict['GeneID'] = []
 search_term_dict['GroupID'] = []
+
 for go_term in go_search_term:
     for g in g_list:
+        if g == 'Ly6a':
+            print go_json[g][0]['Component'], len(go_json[g])
+        gene_tries = []
+        gene_mask = []
         try:
-            gene = go_json[g][term_index.index(go_term[0])][go_term[0]]
-        except:
-            print g
-            gene = False
-            pass
-        if gene:
-            if go_term[1] in gene:
-                if g not in search_term_dict['GeneID']:
-                    search_term_list.append(g)
-                    search_term_dict['GeneID'].append(g)
-                    search_term_dict['GroupID'].append(go_term[1])
-                else:
+            for parts in go_json[g]:
+                try:
+                    gene_test = parts[go_term[0]]
+                    gene_tries.append(gene_test)
+                    gene_mask.append(True)
+                except:
+                    gene_tries.append([])
+                    gene_mask.append(False)
                     pass
+            if True in gene_mask:
+                print gene_mask, gene_tries
+                gene = compress(gene_tries, gene_mask)[0]
+                print gene
+                if go_term[1] in gene:
+                    if g not in search_term_dict['GeneID']:
+                        search_term_list.append(g)
+                        search_term_dict['GeneID'].append(g)
+                        search_term_dict['GroupID'].append(go_term[1])
+                    else:
+                        pass
+        except KeyError:
+            pass
+
 searches_df = pd.DataFrame(search_term_dict)
 searches_df.to_csv(os.path.join(path_to_file, 'go_search_genes_lung_all.txt'), sep = '\t', index=False)
