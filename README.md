@@ -13,12 +13,22 @@ Gene Ontology contains files for fetching and organizing Entrez Gene ontology in
 
 Sample FPKM Work Flow:                
 1) Use tophat_qsub.py to submit sequencing to cluster -> Output: tophat and cufflinks fpkm files         
-2) Use cuffnorm_qsub to create sample sheet and normalize sequecing reads with cuffnorm -> Output: cuffnorm gene fpkm table                
-3) Use align_report2.py to create and alignment report on mapped reads -> Output: alignment report for filtering                
-4) Filter samples using fpkm_df_math.py to delete cells or genes not expressed at threshold -> Output: filtered fpkm usable in monocle (https://github.com/cole-trapnell-lab/monocle-release) or Singular (Fluidigm)                            
-5)Use Pca or corr_search to analyze data -> Search for correlation networks
-
+2) Use cuffnorm_qsub to create sample sheet and normalize sequecing reads with cuffnorm -> Output: cuffnorm gene fpkm table               
 Sample Count based Work Flow:
 1) Use tophat_qsub.py to submit sequencing to cluster -> Output: tophat and cufflinks fpkm files 
 2) Use sort_htseq_count.py to clean up accepted hits and generate htseq counts and picard metric information (3' to 5' bias, CG, etc.)
-3) Use DESeq to process raw counts.
+3) Use R-scripts: DESeq or edgeR to process raw counts.
+
+Data Analysis Tools:
+1) Use filter_outliers to filter on mapping rates,genes expressed, or other rule based metrics. -> outlier_filtered matrix           
+2) Run cluster.py to do a broad unbiased clustering and subclustering search. Produces hierarchical clustering and pca and correlation groups for all cells and cell subgroups (down to a defined threshold for minimal number of cells in a subgroup)                          
+3)Use cluster1.py for a more targeted search uses selected cells or gene files to establish starting point and does targeted significance searching based a single gene.
+4)corr_search.py allows searching for correlation with any one gene for a whole matrix.
+5)make_monocle_data.py only works with cuffnorm output (per monocles requirements: http://cole-trapnell-lab.github.io/monocle-release/) and produces the 3 files necassary for running monocle (gene and cell feature sheets). It requires gene_lookup.py, which fetches GO terms to populate the gene feature sheet. Also required is a table with fluidigm capture data (single clean cell capture or not.) Terms can be added to classify populations by gene expression. 
+6) run_monocle.R runs takes the make_monocle_data.py output and runs through a basic monocle workflow (making spanning tree and plotting genes in pseudotime) and then finds the clustergroups and plots representative groups in psuedotime. 
+7)make_scLVM.R is a script to do the ERCC normalization and cell cycle analysis using the scLVM package (https://github.com/PMBio/scLVM).
+
+
+
+
+
