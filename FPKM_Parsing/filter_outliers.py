@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Seq_data/count-picard_js_SC_1_2_3_5'
+path_to_file = '/Volumes/Seq_data/cuffnorm_hu_ht280_norm_a6'
 #default file name will use genes.fpkm_table from cuffnorm
-file_name = 'js_all_count_table.txt'
+file_name = 'genes.fpkm_table'
 #provide base name for output files
-base_name ='js_SC_1_2_3_5_counts'
+base_name ='hu_ht280_norm_a6'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
@@ -21,13 +21,13 @@ data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
 
 #the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_sneddon_SC_1_2', 'results_sneddon_SC_3_5']
+result_file_names = ['results_norm_alpha6', 'results_DK_ht280', 'results_norm_ht280', 'results_scler_ht280', 'results_IPF_ht280']
 #create full path to output file
 path_to_align=os.path.join(path_to_file, 'results_'+base_name+'_align.p')
 #change to True to force creation of new alignment even if file of same name already exists
 run_even_if_align_exists = True
 
-
+#function for making alignment summary given one or more result files
 def make_align(result_file_names, base_name, path_to_file=path_to_file):
     #path to where the tophat result file or files are located, default is one level up from cuffnorm file
     path = os.path.dirname(path_to_file)
@@ -78,7 +78,7 @@ def make_align(result_file_names, base_name, path_to_file=path_to_file):
     with open(os.path.join(path_to_file,'results_'+base_name+'_align.p'), 'wb') as fp:
       pickle.dump(align_df, fp)
 
-
+#used internally for deleting cells
 def delete_cells(by_cell, cell_list, del_list):
     to_delete1 =[]
     for pos, cell_name in enumerate(cell_list):
@@ -91,15 +91,15 @@ def delete_cells(by_cell, cell_list, del_list):
     n_by_cell = np.delete(by_cell, to_delete, axis=0)
     return cell_list, n_by_cell
 
-
-def filter_by_mapping(path_to_align, cutoff_per_map = 100000, name_filter=False):
+#filter out cells based on alignment summary, can choose mapped fragments or percent mapping rate as metric
+def filter_by_mapping(path_to_align, cutoff_per_map = 50, cutoff_metric='per_mapped', name_filter=False):
     c_to_del =[]
     if path_to_align[-2:] == '.p':
         with open(path_to_align, 'rb') as fp:
             a_data = pickle.load(fp)
     elif path_to_align[-4:] == '.txt':
         a_data = pd.DataFrame.from_csv(path_to_align, sep='\t')
-    p_mapped = a_data['mapped_L_num']
+    p_mapped = a_data[cutoff_metric]
     ind_list = p_mapped[p_mapped<cutoff_per_map]
     c_to_del = ind_list.index.values
     if name_filter:
@@ -126,14 +126,16 @@ def filter_by_mapping(path_to_align, cutoff_per_map = 100000, name_filter=False)
     else:
         return c_to_del
 
-def filter_cells_sd(by_cell, cell_list, sd=3.8):
+#filter out cells that don't express at least 'gene_cutoff' number of genes or are 'sd' standard deviations different in
+#number of genes expressed (generally set quite high)
+def filter_cells_sd(by_cell, cell_list, gene_cutoff=1000, sd=3.8):
     average_gene_exp = []
     to_delete= []
     for cell_name, genes in zip(cell_list,by_cell):
         gen_exp = (genes >= 1).sum()
         print gen_exp, cell_list.index(cell_name), cell_name
-        #if the cell doesn't express at least 500 genes just delete it and exclude from average
-        if gen_exp <=1000:
+        #if the cell doesn't express at least 'gene_cutoff' genes just delete it and exclude from average
+        if gen_exp <=gene_cutoff:
             to_delete.append(cell_list.index(cell_name))
         else:
             average_gene_exp.append(gen_exp)
@@ -170,11 +172,14 @@ def filter_cells_sd(by_cell, cell_list, sd=3.8):
     print "New", naverg, ngene_sd
     return cell_list, by_cell
 
-
-def threshold_genes(by_gene, gen_list, number_expressed=3):
+#delete genes that aren't expressed in at least 'number_expressed' cells at level of at least 'gene_express_cutoff' (default to 1)
+def threshold_genes(by_gene, gen_list, number_expressed=3, gene_express_cutoff=1.0):
     g_todelete = []
+    print gen_list
     for g1, gene in enumerate(by_gene):
-        cells_exp = (gene >= 1.0).sum()
+        cells_exp = (gene >= gene_express_cutoff).sum()
+        if str(gen_list[g1]) =='nan':
+            gen_list[g1] = '_'
         if gen_list[g1][0] == '_':
             g_todelete.append(g1)
         if cells_exp < number_expressed:
@@ -211,6 +216,7 @@ def sep_ERCC(pd_by_gene, gen_list):
     pd_ERCC = pd_by_gene[ERCC_list]
     return pd_by_gene_no_ERCC.transpose(), pd_ERCC.transpose(), w_gene_list
 
+#customized filtering when names are messed up
 def name_filtering(outlier_by_cell, outlier_cell_list):
     for i, l in enumerate(outlier_by_cell):
         split_cell_list = outlier_cell_list[i].split('_')
@@ -254,7 +260,9 @@ del_list=filter_by_mapping(path_to_align, name_filter=False)
 print del_list, 'del'
 #create list of genes
 gen_list = data.index.tolist()
-#cell list
+
+print gen_list
+#make cell list, cuffnorm adds '_0' to end of file, so it will be removed, count files are left as is
 if file_name == 'genes.fpkm_table':
     cell_list = [x[:-2] for x in list(data.columns.values)]
 else:
@@ -263,6 +271,7 @@ else:
 print cell_list , 'clist'
 #make dataframe a numpy array for easy manipulation
 npdata = np.array(data.values, dtype='f')
+npdata = np.nan_to_num(npdata)
 #transpose to delete whole cells
 by_cell1 = npdata.transpose()
 rem_cell_list, rem_by_cell = delete_cells(by_cell1, cell_list, del_list)
