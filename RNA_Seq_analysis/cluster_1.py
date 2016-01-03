@@ -1,10 +1,10 @@
-import cPickle as pickle
+import pickle as pickle
 import numpy as np
 import pandas as pd
 import os
 from subprocess import call
 import matplotlib
-matplotlib.use('QT4Agg')
+matplotlib.use('QT5Agg')
 import matplotlib.pyplot as plt
 from matplotlib.ticker import LinearLocator
 import scipy
@@ -18,16 +18,17 @@ from pprint import pprint
 import difflib
 from operator import itemgetter
 import itertools
+from functools import reduce
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_ctrl_only'
+path_to_file = '/Users/iandriver/Documents/cuffnorm_pdgfra_ctrl_only'
 #for labeling all output files
 base_name = 'pdgfra_ctrl_only'
 #if you want to use the single cell file (created by make_monocle)
 singlecell_file = True
 
-filename = os.path.join(path_to_file, base_name+'_new_sig_groups')
+filename = os.path.join(path_to_file, base_name+'_new_sig_groups_filter_test')
 call('mkdir -p '+filename, shell=True)
 
 #if you want to restrict the genes inlcuded to a specific genelist, requires 'GeneID' and 'GroupID' header
@@ -59,13 +60,12 @@ cell_list = [x for x in list(by_cell.columns.values)]
 
 df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
 df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
-hu_cc_gene_df = pd.DataFrame.from_csv('/Volumes/Seq_data/cell_cycle_genes.txt', sep='\t')
+#hu_cc_gene_df = pd.DataFrame.from_csv('/Volumes/Seq_data/cell_cycle_genes.txt', sep='\t')
 
 def cell_cycle(cell_cycle_gene_df, df_by_gene):
     gene_list = df_by_gene.columns.tolist()
     for g_sym, alt_g_name in zip(cell_cycle_gene_df['Symbol'], cell_cycle_gene_df['Gene Name']):
         if g_sym not in gene_list:
-            print g_sym
             for g in alt_g_name.split(','):
                 if g.strip() in gene_list:
                     cell_cycle_gene_df['Symbol'][g_sym] = g.strip()
@@ -87,7 +87,6 @@ def make_new_matrix_gene(org_matrix_by_gene, gene_list_file):
         if exclude:
             if cell.split(split_on)[1] == 'ctrl' or cell.split(split_on)[1] == 'pnx':
                 if cell.split(split_on)[2][0] =='C':
-                    print cell, 'cell'
                     cell_list1.append(cell)
         else:
             cell_list1.append(cell)
@@ -105,7 +104,6 @@ def make_new_matrix_cell(org_matrix_by_cell, cell_list_file):
     new_cmatrix_df = org_matrix_by_cell[cell_list]
     new_name_list = ['_'.join([x,y,z]) for x,y,z in zip(cell_list,timepoint,cell_type)]
     new_name_dict = {k:v for k,v in zip(cell_list,new_name_list)}
-    print new_name_dict
     new_cmatrix_df = new_cmatrix_df.rename(columns = new_name_dict)
     new_gmatrix_df = new_cmatrix_df.transpose()
     return new_cmatrix_df, new_gmatrix_df
@@ -124,14 +122,12 @@ def preprocess_df(np_by_cell, gen_list, number_expressed=3):
         if cells_exp < number_expressed:
             g_todelete.append(g1)
     g1_todelete = sorted(g_todelete, reverse = True)
-    print np_by_cell.shape
     for pos in g1_todelete:
         if type(gen_list[pos]) != float:
-            print 'Gene '+gen_list[pos]+' not expressed in '+str(number_expressed)+' cells.'
+            print('Gene '+gen_list[pos]+' not expressed in '+str(number_expressed)+' cells.')
             pass
         del gen_list[pos]
     n_by_cell = np.delete(np_by_cell, g1_todelete, axis=0)
-    print n_by_cell.shape
     return n_by_cell, gen_list
 
 np_by_cell2 = np.array(df_by_cell2.values, dtype='f')
@@ -140,16 +136,42 @@ np_by_cell, n_gene_list = preprocess_df(np_by_cell2, gen_list)
 df_by_gene = pd.DataFrame(np_by_cell.transpose(), index = df_by_cell2.columns.values, columns= n_gene_list)
 df_by_cell = df_by_gene.transpose()
 
-def log2_oulierfilter(df_by_cell, log2_cutoff = 0.3, plot=False):
+def find_top_common_genes(log2_df_by_cell, num_common=50):
+    top_common_list = []
+    count = 0
+    done = False
+    log2_df_by_gene = log2_df_by_cell.transpose()
+    log2_df2_gene = pd.DataFrame(pd.to_numeric(log2_df_by_gene, errors='coerce'))
+    log_mean = log2_df2_gene.mean(axis=0).sort_values(ascending=False)
+    log2_sorted_gene = log2_df_by_gene.reindex_axis(log2_df_by_gene.mean(axis=0).sort_values(ascending=False).index, axis=1)
+    for gene in log2_sorted_gene.columns.tolist():
+        if not any(genes <= 1 for genes in log2_df_by_gene[gene]):
+            if count < num_common:
+                count+=1
+                top_common_list.append(gene)
+        if count == num_common:
+            done = True
+            break
+    if done:
+        return log2_df_by_gene[top_common_list].transpose()
+    else:
+        return []
+
+def log2_oulierfilter(df_by_cell, plot=False):
     log2_df = np.log2(df_by_cell+1)
-    log2_df2= pd.DataFrame(log2_df.convert_objects(convert_numeric=True))
-    log_mean = log2_df.mean(axis=0).order(ascending=False)
-    log2_sorted = log2_df.reindex_axis(log2_df.mean(axis=0).order(ascending=False).index, axis=1)
+    top_log2 = find_top_common_genes(log2_df)
+    if top_log2.empty:
+        print("no common genes found")
+        return log2_df, log2_df.transpose()
+    log2_df2= pd.DataFrame(pd.to_numeric(log2_df, errors='coerce'))
+    log_mean = top_log2.mean(axis=0).sort_values(ascending=False)
+    log2_sorted = top_log2.reindex_axis(top_log2.mean(axis=0).sort_values(ascending=False).index, axis=1)
     xticks = []
     keep_col= []
+    log2_cutoff = np.average(log2_sorted)-np.std(log2_sorted)
+    avg_cutoff = np.average(log2_cutoff)
     for col, m in zip(log2_sorted.columns.tolist(),log2_sorted.mean()):
-        print m
-        if m > log2_cutoff:
+        if m > avg_cutoff:
             keep_col.append(col)
             xticks.append(col+' '+str("%.2f" % m))
     filtered_df_by_cell = df_by_cell[keep_col]
@@ -213,7 +235,7 @@ def clust_members(r_link, cutoff):
 
 def print_clust_membs(indices, cell_list):
     for k, ind in enumerate(indices):
-        print "cluster", k + 1, "is", [cell_list[x] for x in ind]
+        print("cluster", k + 1, "is", [cell_list[x] for x in ind])
 
 def plot_tree(dendr, pos=None, save=False):
     icoord = scipy.array(dendr['icoord'])
@@ -339,12 +361,12 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
                     corr_tup.append((index[0],row['corr']))
 
         if neg:
-            print term_to_search+' not correlated.'
+            print(term_to_search+' not correlated.')
         corr_tup.sort(key=itemgetter(1), reverse=True)
         corr_df = pd.DataFrame(corr_tup, columns=['GeneID', 'Correlation'])
         corr_df.to_csv(os.path.join(filename, title+'_Corr_w_'+term_to_search+'_list.txt'), sep = '\t', index=False)
         for c in corr_tup:
-            print c
+            print(c)
         to_plot = [x[0] for x in corr_tup]
         sns.set_palette(sns.cubehelix_palette(len(to_plot), start=1, rot=-.9, reverse=True))
         try:
@@ -383,7 +405,7 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
             plt.savefig(os.path.join(filename, title+'_corr_with_'+term_to_search+'.pdf'), bbox_inches='tight')
             plt.close()
         except KeyError:
-            print term_to_search+' not in this matrix'
+            print(term_to_search+' not in this matrix')
             pass
 def single_gene_sig(gene_test, by_cell_df):
     gene_list= by_cell_df.index.tolist()
@@ -405,7 +427,6 @@ def single_gene_sig(gene_test, by_cell_df):
         high_gene_df = high_df.transpose()
         mid_gene_df = mid_df.transpose()
         low_gene_df = low_df.transpose()
-        print high_cells, mid_cells, low_cells
         g_pvalue_dict = {}
         sig_gene_list = []
         for g in gene_list:
@@ -421,7 +442,6 @@ def single_gene_sig(gene_test, by_cell_df):
         tcf_mean_1 = high_gene_df[gene].mean()
         tcf_mean_2 = mid_gene_df[gene].mean()
         tcf_mean_3 = low_gene_df[gene].mean()
-        print tcf_mean_1, tcf_mean_2, tcf_mean_3
         mean_log2_exp_list = []
         sig_high_low_list = []
         for sig_gene in gene_index:
@@ -435,7 +455,6 @@ def single_gene_sig(gene_test, by_cell_df):
         sig_df = pd.DataFrame({'pvalues':pvalues,'mean':mean_log2_exp_list,'ratio_hi_low':sig_high_low_list}, index=gene_index)
         sig_df.to_csv(os.path.join(filename,'sig_'+gene+'_pvalues.txt'), sep = '\t')
         sig_gene_good = sig_df[(sig_df['mean']>=1.1) & ((sig_df['ratio_hi_low']>=1.45) | (sig_df['ratio_hi_low']<=.7))]
-        print sig_gene_good
         good_genes = sig_gene_good.index.tolist()
         df_to_plot = sorted_df[good_genes]
         try:
@@ -448,7 +467,7 @@ def single_gene_sig(gene_test, by_cell_df):
             ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=6, prop={'size':6})
             plt.show()
         except TypeError:
-            print 'No significant genes when grouping on: '+gene
+            print('No significant genes when grouping on: '+gene)
 
 #finds significant genes between subclusters
 def find_twobytwo(cc, df_by_cell, full_by_cell_df, fraction_to_plot=5):
@@ -514,7 +533,6 @@ def find_twobytwo(cc, df_by_cell, full_by_cell_df, fraction_to_plot=5):
 
 def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=False, label_map=False, annotate=False):
     gene_list = df_by_gene.columns.tolist()
-    print len(gene_list)
     sns.set_palette("RdBu_r", 10, 1)
     if gene_list_filter:
         sig_by_gene = df_by_gene[gene_list_filter]
@@ -530,7 +548,7 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
     pca_rank_df = Pc_df.abs().sum(axis=1)
     Pc_sort_df = pca_rank_df.nlargest(len(sig_by_gene.columns.tolist()))
     top_pca_list = Pc_sort_df.index.tolist()
-    print top_pca_list[0:num_genes], 'top_pca_list'
+    print(top_pca_list[0:num_genes], 'top_pca_list')
     top_by_gene = df_by_gene[top_pca_list[0:num_genes]]
     gene_top = skPCA(n_components=2)
     cell_pca = skPCA(n_components=2)
@@ -544,8 +562,6 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
         if label_map:
             X = [x for x in top_cell_trans[:, 0]]
             Y = [y for y in top_cell_trans[:, 1]]
-            print X
-            print Y
             labels = [label_map[cell][2] for cell in top_by_cell.columns.tolist()]
             markers = [label_map[cell][1] for cell in top_by_cell.columns.tolist()]
             colors = [label_map[cell][0] for cell in top_by_cell.columns.tolist()]
@@ -577,7 +593,6 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
         ax_gene.set_title(title+'_gene')
         ax_gene.set_xlabel('PC1')
         ax_gene.set_ylabel('PC2')
-        print len(top_by_gene.columns), len(top_gene_trans[:, 0]), len(top_gene_trans[:, 1])
         for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
             ax_gene.annotate(label, (x*-1, y))
         if plot:
@@ -609,11 +624,13 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
         Xcolors = [label_map[cell][0] for cell in Xlabs]
         for xtick, xcolor in zip(cg.ax_heatmap.get_xticklabels(), Xcolors):
             xtick.set_color(xcolor)
+            xtick.set_rotation(270)
     if gene_map:
         Ylabs = [gene_list[i] for i in row_order]
         Ycolors = [gene_map[cell] for cell in Ylabs]
         for ytick, ycolor in zip(cg.ax_heatmap.get_yticklabels(), Ycolors):
             ytick.set_color(ycolor)
+            ytick.set_rotation(0)
     if plot:
         plt.show()
     cell_linkage = cg.dendrogram_col.linkage
@@ -707,7 +724,6 @@ def cell_color_map(cell_group_filename):
         for cell in cell_groups_df[col]:
             if str(cell) != 'nan':
                 label_map[cell] = (colors[i],markers[i],col)
-    print label_map
     return label_map
 
 def multi_group_sig(full_by_cell_df, cell_group_filename):
@@ -715,7 +731,6 @@ def multi_group_sig(full_by_cell_df, cell_group_filename):
     group_name_list = cell_groups_df.columns.tolist()
     group_pairs = list(set(itertools.permutations(group_name_list,2)))
     gene_list = full_by_cell_df.index.tolist()
-    print group_pairs
     for gp in group_pairs:
         g_pvalue_dict = {}
         index_list = []
@@ -778,11 +793,11 @@ log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
 
 gene_list, group_colors = gene_list_map('siggenes_list2_wgroups.txt')
 
-multi_group_sig(log2_expdf_cell, 'tcf_groups3.txt')
+#multi_group_sig(log2_expdf_cell, 'tcf_groups3.txt')
 #single_gene_sig(['Tcf21','Pdgfra','Dcn'], log2_expdf_cell)
 #stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
-cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
+#cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
 
 
 new_by_gene = log2_expdf_gene[gene_list]
@@ -799,6 +814,6 @@ else:
     cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(gene_list, new_by_gene, num_to_plot=len(gene_list), label_map=label_map)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-make_subclusters(cc, new_by_cell, log2_expdf_cell, gene_corr_list=['Tcf21', 'G0s2'])
-find_twobytwo(cc, new_by_cell, log2_expdf_cell)
+#make_subclusters(cc, new_by_cell, log2_expdf_cell, gene_corr_list=['Tcf21', 'G0s2'])
+#find_twobytwo(cc, new_by_cell, log2_expdf_cell)
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
