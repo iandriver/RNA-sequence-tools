@@ -28,6 +28,11 @@ base_name = 'deseq_zw_all'
 filename = os.path.join(path_to_file, base_name+'subgroups_200_deseq_color2')
 call('mkdir -p '+filename, shell=True)
 
+#if you have cell group assignments and want to use them for coloring points and labels
+#provide filename (full path if not in path_to_file directory)
+group_file = False
+cell_group_filename = ''
+
 #if you want to restrict the genes inlcuded to a specific genelist, requires 'GeneID' and 'GroupID' header
 make_gene_matrix = False
 if make_gene_matrix:
@@ -40,6 +45,9 @@ if make_cell_matrix:
 #choose metric and method for scipy clustering (also used in seaborn clustermap)
 metric='euclidean'
 method='average'
+
+#if you want to test the stability of clustering over a range of top pca inputs
+test_clust_stability = False
 
 #load file gene
 if path_to_file.split('/')[-1][0:8] == 'cuffnorm':
@@ -141,13 +149,38 @@ np_by_cell, n_gene_list = preprocess_df(np_by_cell2, gen_list)
 df_by_gene = pd.DataFrame(np_by_cell.transpose(), index = df_by_cell2.columns.values, columns= n_gene_list)
 df_by_cell = df_by_gene.transpose()
 
-def log2_oulierfilter(df_by_cell, log2_cutoff = 0.3, plot=False):
+def find_top_common_genes(log2_df_by_cell, num_common=100):
+    top_common_list = []
+    count = 0
+    log2_df_by_gene = log2_df_by_cell.transpose()
+    log2_df2_gene = pd.DataFrame(log2_df_by_gene.convert_objects(convert_numeric=True))
+    log_mean = log2_df2_gene.mean(axis=0).order(ascending=False)
+    log2_sorted_gene = log2_df_by_gene.reindex_axis(log2_df_by_gene.mean(axis=0).order(ascending=False).index, axis=1)
+    for gene in log2_sorted_gene.colums.tolist():
+        if not log2_df_by_gene[gene].any() <= 1.1:
+            if count < num_common:
+                count+=1
+                top_common_list.append(gene)
+        if count == 100:
+            done = True
+            break
+    if done:
+        return log2_df_by_gene[top_common_list].transpose()
+    else:
+        return False
+
+def log2_oulierfilter(df_by_cell, plot=False):
     log2_df = np.log2(df_by_cell+1)
+    top_log2 = find_top_common_genes(log2_df)
+    if not top_log2:
+        print "no common genes found"
+        return log2_df, log2_df.transpose()
     log2_df2= pd.DataFrame(log2_df.convert_objects(convert_numeric=True))
-    log_mean = log2_df.mean(axis=0).order(ascending=False)
-    log2_sorted = log2_df.reindex_axis(log2_df.mean(axis=0).order(ascending=False).index, axis=1)
+    log_mean = top_log2.mean(axis=0).order(ascending=False)
+    log2_sorted = top_log2.reindex_axis(top_log2.mean(axis=0).order(ascending=False).index, axis=1)
     xticks = []
     keep_col= []
+    log2_cutoff = np.average(log2_sorted)-np.std(log2_sorted)
     for col, m in zip(log2_sorted.columns.tolist(),log2_sorted.mean()):
         print m
         if m > log2_cutoff:
@@ -682,13 +715,18 @@ def multi_group_sig(full_by_cell_df, cell_group_filename):
         sig_df.to_csv(os.path.join(filename,'sig_'+gp[0]+'_'+gp[1]+'_pvalues.txt'), sep = '\t')
         cell_names_df.to_csv(os.path.join(filename,'sig_'+gp[0]+'_'+gp[1]+'_cells.txt'), sep = '\t')
 
-gene_number= 200
+gene_number= select_gene_number
 log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
-#stability_ratio = clust_stability(log2_expdf_gene)
-#print stability_ratio
+if test_clust_stability:
+    stability_ratio = clust_stability(log2_expdf_gene)
+
 #cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
-label_map=False
-#multi_group_sig(log2_expdf_cell, 'cell_groups1.txt')
+if group_file:
+    label_map = cell_color_map(cell_group_filename)
+else:
+    label_map=False
+if group_sig_test:
+    multi_group_sig(log2_expdf_cell, cell_group_filename)
 top_pca = plot_PCA(log2_expdf_gene, num_genes=gene_number, title='all_cells_pca', plot=False, label_map=label_map)
 top_pca_by_gene = log2_expdf_gene[top_pca]
 top_pca_by_cell = top_pca_by_gene.transpose()
