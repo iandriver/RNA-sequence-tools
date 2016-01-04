@@ -22,7 +22,7 @@ from functools import reduce
 
 
 #base path to pickle files with fpkm or count matrix
-path_to_file = '/Users/iandriver/Documents/cuffnorm_pdgfra_ctrl_only'
+path_to_file = '/Volumes/Seq_data/cuffnorm_pdgfra_ctrl_only'
 #for labeling all output files
 base_name = 'pdgfra_ctrl_only'
 #if you want to use the single cell file (created by make_monocle)
@@ -628,7 +628,8 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
     if gene_map:
         Ylabs = [gene_list[i] for i in row_order]
         Ycolors = [gene_map[cell] for cell in Ylabs]
-        for ytick, ycolor in zip(cg.ax_heatmap.get_yticklabels(), Ycolors):
+        print(Ylabs,Ycolors)
+        for ytick, ycolor in zip(cg.ax_heatmap.get_yticklabels(), list(reversed(Ycolors))):
             ytick.set_color(ycolor)
             ytick.set_rotation(0)
     if plot:
@@ -773,7 +774,7 @@ def multi_group_sig(full_by_cell_df, cell_group_filename):
 
 def gene_list_map(gene_list_file):
     gene_df = pd.read_csv(os.path.join(path_to_file, gene_list_file), delimiter= '\t')
-    if len(gene_df['GeneID'])== len(gene_df['GeneGroup']):
+    if len(gene_df['GeneID']) == len(gene_df['GeneGroup']):
         colors = ['r', 'c', 'b', 'm', 'g', 'orange', 'darkslateblue', 'black']
         gene_seen = []
         gene_list_1 = []
@@ -781,6 +782,7 @@ def gene_list_map(gene_list_file):
         for gene, group in zip(gene_df['GeneID'].tolist(), gene_df['GeneGroup'].tolist()):
             if gene not in gene_seen:
                 gene_list_1.append(gene)
+                print(gene, colors[int(group)-1])
                 group_list_1.append(colors[int(group)-1])
                 gene_seen.append(gene)
     else:
