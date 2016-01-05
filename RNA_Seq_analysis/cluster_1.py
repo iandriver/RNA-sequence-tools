@@ -31,6 +31,9 @@ singlecell_file = True
 filename = os.path.join(path_to_file, base_name+'_new_sig_groups_filter_test')
 call('mkdir -p '+filename, shell=True)
 
+gene_filter_list = False
+filter_list = '/Volumes/Seq_data/cell_cycle_genes.txt'
+
 #if you want to restrict the genes inlcuded to a specific genelist, requires 'GeneID' and 'GroupID' header
 make_gene_matrix = True
 if make_gene_matrix:
@@ -60,7 +63,8 @@ cell_list = [x for x in list(by_cell.columns.values)]
 
 df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
 df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
-#hu_cc_gene_df = pd.DataFrame.from_csv('/Volumes/Seq_data/cell_cycle_genes.txt', sep='\t')
+if gene_filter_list:
+    hu_cc_gene_df = pd.DataFrame.from_csv(filter_list, sep='\t')
 
 def cell_cycle(cell_cycle_gene_df, df_by_gene):
     gene_list = df_by_gene.columns.tolist()
@@ -531,7 +535,7 @@ def find_twobytwo(cc, df_by_cell, full_by_cell_df, fraction_to_plot=5):
         sig_df.to_csv(os.path.join(filename,'sig_'+v+'_pvalues.txt'), sep = '\t')
         cell_names_df.to_csv(os.path.join(filename,'sig_'+v+'_cells.txt'), sep = '\t')
 
-def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=False, label_map=False, annotate=False):
+def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=False, label_map=False, gene_map = False, annotate=False):
     gene_list = df_by_gene.columns.tolist()
     sns.set_palette("RdBu_r", 10, 1)
     if gene_list_filter:
@@ -559,6 +563,12 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
     top_gene_trans = gene_top.fit_transform(np_top_gene)
     if not np.isnan(top_cell_trans).any():
         fig, (ax_cell, ax_gene) = plt.subplots(2, 1, figsize=(15, 30), sharex=False)
+        rect_cell = ax_cell.patch
+        rect_gene = ax_gene.patch
+        rect_cell.set_facecolor('white')
+        rect_gene.set_facecolor('white')
+        ax_cell.grid(b=True, which='major', color='grey', linestyle='--', linewidth=0.3)
+        ax_gene.grid(b=True, which='major', color='grey', linestyle='--', linewidth=0.3)
         if label_map:
             X = [x for x in top_cell_trans[:, 0]]
             Y = [y for y in top_cell_trans[:, 1]]
@@ -572,24 +582,31 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
                 else:
                     lab= l
                     label_done.append(l)
-                ax_cell.scatter(X_pos, Y_pos, marker=m, c=color, label=lab, s=20)
+                ax_cell.scatter(X_pos, Y_pos, marker=m, c=color, label=lab, s=30)
 
         else:
             ax_cell.scatter(top_cell_trans[:, 0], top_cell_trans[:, 1], alpha=0.75)
         ax_cell.set_xlim([min(top_cell_trans[:, 0])-1, max(top_cell_trans[:, 0]+1)])
-        ax_cell.set_ylim([min(top_cell_trans[:, 1])-1, max(top_cell_trans[:, 1]+1)])
+        ax_cell.set_ylim([min(top_cell_trans[:, 1])-1, max(top_cell_trans[:, 1]+2)])
         ax_cell.set_title(title+'_cell')
-        ax_cell.legend(loc='best', ncol=1, prop={'size':12}, markerscale=2, frameon=True)
+        ax_cell.legend(loc='best', ncol=1, prop={'size':12}, markerscale=1.5, frameon=True)
         ax_cell.set_xlabel('PC1')
         ax_cell.set_ylabel('PC2')
         if annotate:
             for label, x, y in zip(top_by_cell.columns, top_cell_trans[:, 0], top_cell_trans[:, 1]):
                 ax_cell.annotate(label, (x+0.1, y+0.1))
 
-
-        ax_gene.scatter(top_gene_trans[:, 0]*-1, top_gene_trans[:, 1], alpha=0.75)
+        if gene_map:
+            X = [x for x in top_gene_trans[:, 0]]
+            Y = [y for y in top_gene_trans[:, 1]]
+            labels = top_by_gene.columns.tolist()
+            colors = [gene_map[gene] for gene in top_by_gene.columns.tolist()]
+            for X_pos, Y_pos, color, l in zip(X, Y, colors, labels):
+                ax_gene.scatter(X_pos*-1, Y_pos, marker='o', c=color, label = l, s=30)
+        else:
+            ax_gene.scatter(top_gene_trans[:, 0]*-1, top_gene_trans[:, 1], alpha=0.75)
         ax_gene.set_xlim([min(top_gene_trans[:, 0]*-1)-1, max(top_gene_trans[:, 0])+1])
-        ax_gene.set_ylim([min(top_gene_trans[:, 1]*-1)-1, max(top_gene_trans[:, 1])+1])
+        ax_gene.set_ylim([min(top_gene_trans[:, 1]*-1)-1, max(top_gene_trans[:, 1])+2])
         ax_gene.set_title(title+'_gene')
         ax_gene.set_xlabel('PC1')
         ax_gene.set_ylabel('PC2')
@@ -627,8 +644,7 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
             xtick.set_rotation(270)
     if gene_map:
         Ylabs = [gene_list[i] for i in row_order]
-        Ycolors = [gene_map[cell] for cell in Ylabs]
-        print(Ylabs,Ycolors)
+        Ycolors = [gene_map[gene] for gene in Ylabs]
         for ytick, ycolor in zip(cg.ax_heatmap.get_yticklabels(), list(reversed(Ycolors))):
             ytick.set_color(ycolor)
             ytick.set_rotation(0)
@@ -664,7 +680,10 @@ def make_subclusters(cc, log2_expdf_cell, log2_expdf_cell_full, gene_corr_list=F
             norm_df_cell1 = np.exp2(full_cell_subset)
             norm_df_cell = norm_df_cell1 -1
             norm_df_cell.to_csv(os.path.join(filename, base_name+'_'+title+'_matrix.txt'), sep = '\t', index_col=0)
-            top_pca = plot_PCA(gene_subset, num_genes=len(gene_subset.columns.tolist()), title=title, plot=False, label_map=label_map)
+            if group_colors:
+                top_pca = plot_PCA(gene_subset, num_genes=len(gene_subset.columns.tolist()), title=title, plot=False, label_map=label_map, gene_map=gene_color_map)
+            else:
+                top_pca = plot_PCA(gene_subset, num_genes=len(gene_subset.columns.tolist()), title=title, plot=False, label_map=label_map)
             if len(top_pca)<gene_number:
                 plot_num = len(top_pca)
             else:
@@ -673,9 +692,12 @@ def make_subclusters(cc, log2_expdf_cell, log2_expdf_cell_full, gene_corr_list=F
                 top_pca_by_gene = gene_subset[top_pca]
                 top_pca_by_cell = top_pca_by_gene.transpose()
                 if gene_corr_list:
-                    top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
+                    if gene_filter_list:
+                        top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
+                    else:
+                        top_genes_search = top_pca
                     corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
-                cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=plot_num, title=title, plot=False, label_map=label_map)
+                cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=plot_num, title=title, plot=False, label_map=label_map, gene_map = gene_color_map)
                 plt.close()
             else:
                 pass
@@ -799,23 +821,26 @@ gene_list, group_colors = gene_list_map('siggenes_list2_wgroups.txt')
 #single_gene_sig(['Tcf21','Pdgfra','Dcn'], log2_expdf_cell)
 #stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
-#cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
+if gene_filter_list:
+    cc_gene_df = cell_cycle(hu_cc_gene_df, log2_expdf_gene)
 
 
 new_by_gene = log2_expdf_gene[gene_list]
 new_by_cell = new_by_gene.transpose()
 cell_list = new_by_cell.columns.tolist()
 label_map = cell_color_map('tcf_groups3.txt')
-plot_PCA(new_by_gene, num_genes=len(gene_list), title='all_cells_pca', plot=False, label_map=label_map)
+
 if group_colors:
     gene_color_map = {}
     for gene, color in zip(gene_list,group_colors):
         gene_color_map[gene] = color
+    plot_PCA(new_by_gene, num_genes=len(gene_list), title='all_cells_pca', plot=False, label_map=label_map, gene_map=gene_color_map)
     cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(gene_list, new_by_gene, num_to_plot=len(gene_list), label_map=label_map, gene_map=gene_color_map)
 else:
+    plot_PCA(new_by_gene, num_genes=len(gene_list), title='all_cells_pca', plot=False, label_map=label_map)
     cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(gene_list, new_by_gene, num_to_plot=len(gene_list), label_map=label_map)
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
-#make_subclusters(cc, new_by_cell, log2_expdf_cell, gene_corr_list=['Tcf21', 'G0s2'])
+make_subclusters(cc, new_by_cell, log2_expdf_cell, gene_corr_list=['Tcf21', 'G0s2'])
 #find_twobytwo(cc, new_by_cell, log2_expdf_cell)
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
