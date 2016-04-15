@@ -4,7 +4,7 @@ import os
 
 
 
-path_to_file = 'DESeq_all_ctrl_vs_d4pnx_stats.txt'
+path_to_file = '/Volumes/Drobo/pdgfra_rsem_pnxd4/DESeq_all_ctrl_vs_d4pnx_2_stats.txt'
 
 #either 'transcript' or 'gene'
 ensembl_type ='gene'
