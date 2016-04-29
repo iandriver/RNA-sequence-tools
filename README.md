@@ -3,6 +3,8 @@ RNA-sequence-tools
 
 Tools for RNA seq and gene annotation
 
+**Note: Most of the single cell analysis has migrated to SCICAST: https://github.com/iandriver/SCICAST and is no longer maintained here.**
+
 Tophat Cluster submission contains scripts for processing raw RNA-seq files for submission to a linux cluster (qb3 at UCSF specifically).  Additionally it contains some scripts for testing command formatting and managing files on a cluster.
 
 FPKM parsing contains scripts for turning multiple tophat/cufflinks output files into FPKM matrices suitable for analysis in Fluidigm Singular R package.
@@ -18,7 +20,7 @@ Sample FPKM Work Flow:
 Sample Count based Work Flow:         
 
 1) Use tophat_qsub.py to submit sequencing to cluster -> Output: tophat and cufflinks fpkm files 										
-2) Use sort_htseq_count.py to clean up accepted hits and generate htseq counts and picard metric information (3' to 5' bias, CG, etc.)	
+2) Use sort_htseq_count.py to clean up accepted hits and generate htseq counts and picard metric information (3' to 5' bias, CG, etc.)
 3) Use R-scripts: DESeq or edgeR to process raw counts.										
 
 Data Analysis Tools:         
@@ -28,10 +30,5 @@ Data Analysis Tools:
 3)Use cluster1.py for a more targeted search uses selected cells or gene files to establish starting point and does targeted significance searching based a single gene.																				
 4)corr_search.py allows searching for correlation with any one gene for a whole matrix.																				
 5)make_monocle_data.py only works with cuffnorm output (per monocles requirements: http://cole-trapnell-lab.github.io/monocle-release/) and produces the 3 files necassary for running monocle (gene and cell feature sheets). It requires gene_lookup.py, which fetches GO terms to populate the gene feature sheet. Also required is a table with fluidigm capture data (single clean cell capture or not.) Terms can be added to classify populations by gene expression. 																										
-6) run_monocle.R runs takes the make_monocle_data.py output and runs through a basic monocle workflow (making spanning tree and plotting genes in pseudotime) and then finds the clustergroups and plots representative groups in psuedotime. 
+6) run_monocle.R runs takes the make_monocle_data.py output and runs through a basic monocle workflow (making spanning tree and plotting genes in pseudotime) and then finds the clustergroups and plots representative groups in psuedotime.
 7)make_scLVM.R is a script to do the ERCC normalization and cell cycle analysis using the scLVM package (https://github.com/PMBio/scLVM).
-
-
-
-
-
