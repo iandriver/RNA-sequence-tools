@@ -19,6 +19,7 @@ import difflib
 from operator import itemgetter
 import itertools
 from functools import reduce
+import matplotlib.ticker as ticker
 
 
 #base path to pickle files with fpkm or count matrix
@@ -28,7 +29,7 @@ base_name = 'pdgfra_ctrl_only'
 #if you want to use the single cell file (created by make_monocle)
 singlecell_file = True
 
-filename = os.path.join(path_to_file, base_name+'_new_sig_groups_filter_test')
+filename = os.path.join(path_to_file, base_name+'_new_figures')
 call('mkdir -p '+filename, shell=True)
 
 gene_filter_list = False
@@ -348,7 +349,7 @@ def run_corr(df_by_gene, title, method_name='pearson', sig_threshold= 0.35, run_
     return sig_corrs
 
 #corr_plot finds and plots all correlated genes, log turns on log scale, sort plots the genes in the rank order of the gene searched
-def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_threshold=0.5):
+def corr_plot(terms_to_search, df_by_gene, title, label_map=False, log=False, sort=True, sig_threshold=0.5):
     sig_corrs = run_corr(df_by_gene, title, sig_threshold=sig_threshold)
     for term_to_search in terms_to_search:
         corr_tup = [(term_to_search, 1)]
@@ -377,7 +378,7 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
             sorted_df = df_by_gene.sort([term_to_search])
             log2_df = np.log2(df_by_gene[to_plot])
             sorted_log2_df=np.log2(sorted_df[to_plot])
-            ylabel='CPM (log2)'
+            ylabel='FPKM (log2)'
             if sort and log:
                 ax = sorted_log2_df.plot()
                 xlabels = sorted_log2_df[to_plot].index.values
@@ -395,9 +396,17 @@ def corr_plot(terms_to_search, df_by_gene, title, log=False, sort=True, sig_thre
             ax.set_ylabel(ylabel)
             ax.set_title('Correlates with '+term_to_search, loc='right')
             ax.xaxis.set_minor_locator(LinearLocator(numticks=len(xlabels)))
-            ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
+            if label_map:
+                ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
+                Xcolors = [label_map[cell][0] for cell in xlabels]
+                for xtick, xcolor in zip(ax.get_xticklabels(which='minor'), Xcolors):
+                    xtick.set_color(xcolor)
+                    xtick.set_rotation(90)
+            else:
+                ax.set_xticklabels(xlabels, minor=True, rotation='vertical', fontsize=6)
             ax.set_ylim([0, df_by_gene[to_plot].values.max()])
-            ax.tick_params(axis='x', labelsize=1)
+            ax.xaxis.set_major_formatter(ticker.NullFormatter())
+            ax.tick_params(axis='x', which ='minor', labelsize=10)
             if len(corr_tup) > 15:
                 l_labels = [str(x[0])+' '+"%.2f" % x[1] for x in corr_tup]
                 ax.legend(l_labels, loc='upper left', bbox_to_anchor=(0.01, 1.05), ncol=6, prop={'size':6})
@@ -474,7 +483,7 @@ def single_gene_sig(gene_test, by_cell_df):
             print('No significant genes when grouping on: '+gene)
 
 #finds significant genes between subclusters
-def find_twobytwo(cc, df_by_cell, full_by_cell_df, fraction_to_plot=5):
+def find_twobytwo(cc, df_by_cell, full_by_cell_df, fraction_to_plot=8):
     gene_list = full_by_cell_df.index.tolist()
     by_gene_df = full_by_cell_df.transpose()
     pair_dict = {}
@@ -602,16 +611,16 @@ def plot_PCA(df_by_gene, num_genes=100, gene_list_filter=False, title='', plot=F
             labels = top_by_gene.columns.tolist()
             colors = [gene_map[gene] for gene in top_by_gene.columns.tolist()]
             for X_pos, Y_pos, color, l in zip(X, Y, colors, labels):
-                ax_gene.scatter(X_pos*-1, Y_pos, marker='o', c=color, label = l, s=30)
+                ax_gene.scatter(X_pos, Y_pos, marker='o', c=color, label = l, s=30)
         else:
-            ax_gene.scatter(top_gene_trans[:, 0]*-1, top_gene_trans[:, 1], alpha=0.75)
-        ax_gene.set_xlim([min(top_gene_trans[:, 0]*-1)-1, max(top_gene_trans[:, 0])+1])
-        ax_gene.set_ylim([min(top_gene_trans[:, 1]*-1)-1, max(top_gene_trans[:, 1])+2])
+            ax_gene.scatter(top_gene_trans[:, 0], top_gene_trans[:, 1], alpha=0.75)
+        ax_gene.set_xlim([min(top_gene_trans[:, 0])-1, max(top_gene_trans[:, 0])+1])
+        ax_gene.set_ylim([min(top_gene_trans[:, 1])-1, max(top_gene_trans[:, 1])+2])
         ax_gene.set_title(title+'_gene')
         ax_gene.set_xlabel('PC1')
         ax_gene.set_ylabel('PC2')
         for label, x, y in zip(top_by_gene.columns, top_gene_trans[:, 0], top_gene_trans[:, 1]):
-            ax_gene.annotate(label, (x*-1, y))
+            ax_gene.annotate(label, (x+.5, y+.5))
         if plot:
             plt.show()
         if title != '':
@@ -642,12 +651,18 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
         for xtick, xcolor in zip(cg.ax_heatmap.get_xticklabels(), Xcolors):
             xtick.set_color(xcolor)
             xtick.set_rotation(270)
+    else:
+        for xtick in cg.ax_heatmap.get_xticklabels():
+            xtick.set_rotation(270)
     if gene_map:
         Ylabs = [gene_list[i] for i in row_order]
         Ycolors = [gene_map[gene] for gene in Ylabs]
         for ytick, ycolor in zip(cg.ax_heatmap.get_yticklabels(), list(reversed(Ycolors))):
             ytick.set_color(ycolor)
             ytick.set_rotation(0)
+    else:
+        for ytick in cg.ax_heatmap.get_yticklabels():
+            xtick.set_rotation(0)
     if plot:
         plt.show()
     cell_linkage = cg.dendrogram_col.linkage
@@ -663,7 +678,7 @@ def clust_heatmap(gene_list, df_by_gene, num_to_plot=len(gene_list), title='', p
     plt.close()
     return cell_linkage, df_by_gene[gene_list[0:num_to_plot]], col_order
 
-def make_subclusters(cc, log2_expdf_cell, log2_expdf_cell_full, gene_corr_list=False, fraction_to_plot=4, filename=filename, base_name=base_name):
+def make_subclusters(cc, log2_expdf_cell, log2_expdf_cell_full, gene_corr_list=False, fraction_to_plot=8, filename=filename, base_name=base_name):
     parent = cc[0][1]
     p_num = cc[0][0]
     l_nums = [x[0] for x in cc]
@@ -696,7 +711,7 @@ def make_subclusters(cc, log2_expdf_cell, log2_expdf_cell_full, gene_corr_list=F
                         top_genes_search = [x for x in top_pca if x not in cc_gene_df.columns.tolist()]
                     else:
                         top_genes_search = top_pca
-                    corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title)
+                    corr_plot(gene_corr_list+top_genes_search[0:3], gene_subset, title = title, label_map=label_map)
                 cell_linkage, plotted_df_by_gene, col_order = clust_heatmap(top_pca, top_pca_by_gene, num_to_plot=plot_num, title=title, plot=False, label_map=label_map, gene_map = gene_color_map)
                 plt.close()
             else:
@@ -817,7 +832,7 @@ log2_expdf_cell, log2_expdf_gene = log2_oulierfilter(df_by_cell, plot=False)
 
 gene_list, group_colors = gene_list_map('siggenes_list2_wgroups.txt')
 
-#multi_group_sig(log2_expdf_cell, 'tcf_groups3.txt')
+multi_group_sig(log2_expdf_cell, 'tcf_groups3.txt')
 #single_gene_sig(['Tcf21','Pdgfra','Dcn'], log2_expdf_cell)
 #stability_ratio = clust_stability(log2_expdf_gene)
 #print stability_ratio
@@ -842,5 +857,5 @@ else:
 #cell_dist, row_dist, row_clusters, link_mat, row_dendr = run_cluster(top_pca_by_gene)
 cc = make_tree_json(cell_linkage, plotted_df_by_gene)
 make_subclusters(cc, new_by_cell, log2_expdf_cell, gene_corr_list=['Tcf21', 'G0s2'])
-#find_twobytwo(cc, new_by_cell, log2_expdf_cell)
+find_twobytwo(cc, new_by_cell, log2_expdf_cell)
 #augmented_dendrogram(row_clusters, labels=top_pca_by_cell.columns.tolist(), leaf_rotation=90, leaf_font_size=8)
