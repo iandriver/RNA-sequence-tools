@@ -3,9 +3,11 @@ from pprint import pprint
 import itertools
 import numpy as np
 import os
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-qpcr_file ='/Users/idriver/RockLab-files/Hu_Itga8-qpcr-011416.txt'
-qpcr_df = pd.read_csv(qpcr_file, delimiter= '\t')
+qpcr_file ='/Users/idriver/Downloads/2016-04-19_ITGA8_1_6_7_8.txt'
+qpcr_df = pd.DataFrame.from_csv(qpcr_file, sep= '\t')
 
 samples = list(set(qpcr_df['Sample Name']))
 targets = list(set(qpcr_df['Target Name']))
@@ -17,9 +19,7 @@ for samp in samples:
     delta_ct_gapdh_dict = {}
     sample_df =  qpcr_df[qpcr_df['Sample Name'] == samp]
     for targ in targets:
-        print(targ)
-        print(sample_df)
-        target_df = sample_df[(sample_df['Target Name'] == targ) & (sample_df['MTP'] == 'N')]
+        target_df = sample_df[(sample_df['Target Name'] == targ)]
         targ_mean = target_df['CT'].convert_objects(convert_numeric=True).mean()
         target_dict[targ] = targ_mean
         index_list.append(samp)
@@ -41,9 +41,12 @@ for samp in samples:
     sample_dict['delta_ct_gapdh_'+samp] = delta_ct_gapdh_dict
 delta_pairs = []
 for samp1,samp2 in itertools.permutations(samples,2):
-    if samp1 != samp2 and samp1[-1] ==samp2[-1] and 'pos' in samp1:
+    if samp1 != samp2 and samp1[-2:] == samp2[-2:] and 'No' in samp2:
+        delta_pairs.append((samp1,samp2))
+    if samp1 != samp2 and samp1[-2:] == samp2[-2:] and 'neg' in samp2:
         delta_pairs.append((samp1,samp2))
 results_df = pd.DataFrame.from_dict(sample_dict)
+fc_results_df = 0
 for p in delta_pairs:
     pow_dict = dict(zip(targets,[2 for t in targets]))
     ratio_dict = {'pos_dict_a':sample_dict['delta_ct_actb_'+p[0]],'neg_dict_a':sample_dict['delta_ct_actb_'+p[1]], 'pos_dict_g':sample_dict['delta_ct_gapdh_'+p[0]], 'neg_dict_g':sample_dict['delta_ct_gapdh_'+p[1]], 'pwer':pow_dict}
@@ -55,5 +58,44 @@ for p in delta_pairs:
     fc_all = pd.merge(ratio_df_a,ratio_df_g, right_index=True, left_index=True)
     all_results = pd.merge(results_df,fc_all, right_index=True, left_index=True)
     results_df = all_results.copy()
+    if not isinstance(fc_results_df, pd.DataFrame):
+        all_fc_results_df = fc_all.copy()
+    else:
+        all_fc_results_df = pd.merge(fc_results_df,fc_all, right_index=True, left_index=True)
+    fc_results_df = all_fc_results_df.copy()
+plot_df_dict = {}
+target_list = all_fc_results_df.index.tolist()
 
+plot_df_dict['Target'] = []
+plot_df_dict['Ratio ITGA8+ to ITGA8-'] = []
+plot_df_dict['Control'] = []
+for  t in all_fc_results_df.columns.values:
+    control_name = t.split('_')[-1]
+    plot_df_dict['Target']= plot_df_dict['Target']+ target_list
+    plot_df_dict['Ratio ITGA8+ to ITGA8-']= plot_df_dict['Ratio ITGA8+ to ITGA8-'] +all_fc_results_df[t].tolist()
+    plot_df_dict['Control'] = plot_df_dict['Control']+[control_name]*len(target_list)
+print(plot_df_dict)
+plot_df = pd.DataFrame.from_dict(plot_df_dict)
+print(plot_df)
+bp = sns.boxplot(x='Target', y='Ratio ITGA8+ to ITGA8-', hue = 'Control', data=plot_df)
+add_on =0
+ymax = plot_df['Ratio ITGA8+ to ITGA8-'].max()
+pos = np.arange(len(set(plot_df['Target'])))
+print(pos)
+for tick, label in zip(range(len(set(plot_df['Target']))), plot_df['Target']):
+    print(tick, label)
+    df_1 = plot_df[(plot_df['Target']==label)&(plot_df['Control']=='actb')]
+    df_2 = plot_df[(plot_df['Target']==label)&(plot_df['Control']=='gapdh')]
+
+    ratio_a = df_1['Ratio ITGA8+ to ITGA8-'].mean()
+    ratio_g = df_2['Ratio ITGA8+ to ITGA8-'].mean()
+    bp.text(pos[tick]-0.15, ymax + 0.1, round(ratio_a),
+            horizontalalignment='center', color='blue')
+    bp.text(pos[tick]+0.15, ymax + 0.1, round(ratio_g),
+            horizontalalignment='center', color='green')
+
+
+
+
+plt.show()
 results_df.to_csv(os.path.join(os.path.dirname(qpcr_file), 'qpcr_results_'+qpcr_file.split('/')[-1]), sep='\t')
