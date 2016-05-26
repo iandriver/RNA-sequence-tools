@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 #This section will take fpkm matrix input and make pandas dataframe
 
 #path to fpkm file (usually cuffnorm output)
-path_to_file = '/Volumes/Drobo/pdgfra_rsem_pnxd4'
+path_to_file = '/Volumes/Drobo/hisat2_chapmanh-hu-norm-2F6'
 #default file name will use genes.fpkm_table from cuffnorm
-file_name = 'pdgfra_rsem_pnxd4_isoform_fpkm_matrix.txt'
+file_name = 'ballgown_gene_expression_hisat2_2F6.txt'
 #provide base name for output files
-base_name ='fpkm_iso_pdgfra_all'
+base_name ='hu-norm-2F6_hisat2'
 #create pandas dataframe from fpkm files
 data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
@@ -21,9 +21,9 @@ data = pd.DataFrame.from_csv(os.path.join(path_to_file,file_name), sep='\t')
 
 #If tophat alignment files are not available or you don't want this option then use_align = False
 #If True will look for align
-use_align=False
+use_align=True
 #the name of the file or files that contain the results from alignment, in a list
-result_file_names = ['results_zw_141203_1','results_zw_141203_2', 'results_zw1_150612', 'results_zw_151125']
+result_file_names = ['results_norm_ht280','results_chapmanh_IPF_160420','results_chapmanh-hu-IPF-HTII-280','results_scler_ht280','results_DK_ht280', 'results_hu-norm-2F6','results_norm_alpha6','results_scler_alpha6','results_alpha6_hu_IPF']
 #create full path to output file
 path_to_align=os.path.join(path_to_file, 'results_'+base_name+'_align.p')
 #change to True to force creation of new alignment even if file of same name already exists
@@ -32,7 +32,7 @@ run_even_if_align_exists = True
 #function for making alignment summary given one or more result files
 def make_align(result_file_names, base_name, path_to_file=path_to_file):
     #path to where the tophat result file or files are located, default is one level up from cuffnorm file
-    path = '/Volumes/Seq_data'
+    path = '/Volumes/Drobo/Seq_data/results_hu_chapmanh_all'
     cell_list =[]
     align_dict =OrderedDict()
     align_dict['input_L_num'] = []
@@ -129,7 +129,7 @@ def filter_by_mapping(path_to_align, cutoff_per_map = 50, cutoff_metric='per_map
 
 #filter out cells that don't express at least 'gene_cutoff' number of genes or are 'sd' standard deviations different in
 #number of genes expressed (generally set quite high)
-def filter_cells_sd(by_cell, cell_list, gene_cutoff=1000, sd=3.8):
+def filter_cells_sd(by_cell, cell_list, gene_cutoff=900, sd=4):
     average_gene_exp = []
     to_delete= []
     for cell_name, genes in zip(cell_list,by_cell):
@@ -137,7 +137,7 @@ def filter_cells_sd(by_cell, cell_list, gene_cutoff=1000, sd=3.8):
         average_gene_exp.append(gen_exp)
         #if the cell doesn't express at least 'gene_cutoff' genes just delete it and exclude from average
         if gen_exp <=gene_cutoff:
-            to_delete.append(cell_list.index(cell_name))
+            to_delete.append((cell_list.index(cell_name),'gene_cutoff'))
     np_av = np.array(average_gene_exp)
     averg = np.average(np_av)
     gene_sd = np.std(np_av)
@@ -146,13 +146,13 @@ def filter_cells_sd(by_cell, cell_list, gene_cutoff=1000, sd=3.8):
     for i1, exp_level in enumerate(np_av):
         if exp_level < (averg - (gene_sd*sd)) or exp_level > (averg + (gene_sd*sd)):
             if i1 not in to_delete:
-                to_delete.append(i1)
-    to_delete1 = sorted(to_delete, reverse = True)
-    for pos in to_delete1:
-        print('Deleted outlier '+cell_list[pos])
+                to_delete.append((i1,'sd_cutoff'))
+    to_delete1 = sorted(to_delete, key=lambda tup: tup[0], reverse = True)
+    for pos, reas in to_delete1:
+        print('Deleted outlier '+cell_list[pos]+' for '+reas)
         del cell_list[pos]
-    to_delete2 = sorted(to_delete1, reverse = False)
-    by_cell = np.delete(by_cell, to_delete2, axis=0)
+    to_delete2 = sorted(to_delete1, key=lambda tup: tup[0], reverse = False)
+    by_cell = np.delete(by_cell, [x[0] for x in to_delete2], axis=0)
     print("Number of cells remaining: "+str(len(cell_list)))
     naverage_gene_exp = []
     for ngenes in by_cell:
@@ -162,10 +162,11 @@ def filter_cells_sd(by_cell, cell_list, gene_cutoff=1000, sd=3.8):
     naverg = np.average(nnp_av)
     ngene_sd = np.std(nnp_av)
     print('Average expression, stdev new: '+str(naverg)+', '+str(ngene_sd))
+    print(len(cell_list),len(by_cell))
     return cell_list, by_cell
 
 #delete genes that aren't expressed in at least 'number_expressed' cells at level of at least 'gene_express_cutoff' (default to 1)
-def threshold_genes(by_gene, gen_list, number_expressed=1, gene_express_cutoff=1.0):
+def threshold_genes(by_gene, gen_list, number_expressed=3, gene_express_cutoff=1.0):
     g_todelete = []
     for g1, gene in enumerate(by_gene):
         cells_exp = (gene >= gene_express_cutoff).sum()
@@ -239,7 +240,7 @@ gen_list = data.index.tolist()
 if file_name == 'genes.fpkm_table':
     cell_list = [x[:-2] for x in list(data.columns.values)]
 else:
-    cell_list = [x for x in list(data.columns.values)]
+    cell_list = [x.strip('FPKM.') for x in list(data.columns.values)]
 
 #make dataframe a numpy array for easy manipulation
 npdata = np.array(data.values, dtype='f')
@@ -288,10 +289,10 @@ if bulk:
 else:
     pass
 outlier_cell_list = [x for x in list(fpkm_df_outlier.columns.values)]
-df_ERCC.to_csv(os.path.join(path_to_file, base_name+'_ERCC2.txt'), sep = '\t')
+df_ERCC.to_csv(os.path.join(path_to_file, base_name+'_ERCC.txt'), sep = '\t')
 if bulk:
     df_bulk_ERCC.to_csv(os.path.join(path_to_file, base_name+'_bulkonly_ERCC.txt'), sep = '\t')
     bulk_ctrl_df.to_csv(os.path.join(path_to_file, base_name+'_bulk_ctrls.txt'), sep = '\t')
 else:
     pass
-fpkm_df_outlier.to_csv(os.path.join(path_to_file, base_name+'_outlier_filtered2.txt'), sep = '\t')
+fpkm_df_outlier.to_csv(os.path.join(path_to_file, base_name+'_outlier_filtered.txt'), sep = '\t')
