@@ -3,7 +3,7 @@ RNA-sequence-tools
 
 Tools for RNA seq and gene annotation
 
-**Note: Most of the single cell analysis has migrated to SCICAST: https://github.com/iandriver/SCICAST and is no longer maintained here.**
+**Note: Most of the single cell analysis has migrated to scicast: https://github.com/iandriver/scicast and is no longer maintained here.**
 
 Tophat Cluster submission contains scripts for processing raw RNA-seq files for submission to a linux cluster (qb3 at UCSF specifically).  Additionally it contains some scripts for testing command formatting and managing files on a cluster.
 
