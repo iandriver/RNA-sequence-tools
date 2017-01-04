@@ -10,11 +10,10 @@ run_monocle <- function(directory){
 	feature_sheet <- read.delim(paste(directory,"/gene_feature_data.txt", sep=''))
 	row.names(sample_sheet) <- sample_sheet$tracking_id
 	row.names(feature_sheet) <- feature_sheet$GeneID
-	colnames(fpkm_matrix) <- row.names(sample_sheet)
-	row.names(fpkm_matrix) <- row.names(feature_sheet)
+  fpkm2 <- fpkm_matrix[,match(row.names(sample_sheet), colnames(fpkm_matrix))]
 	pd <- new("AnnotatedDataFrame", data = sample_sheet)
 	fd <- new("AnnotatedDataFrame", data = feature_sheet)
-	my_data <- newCellDataSet(as.matrix(fpkm_matrix), phenoData = pd, featureData=fd)
+	my_data <- newCellDataSet(as.matrix(fpkm2), phenoData = pd, featureData=fd)
 	my_data <- detectGenes(my_data, min_expr = 1)
 	expressed_genes <- row.names(subset(fData(my_data), num_cells_expressed >= 5))
 
