@@ -8,6 +8,7 @@ make_cpm <- function(sample_file_path, save_name, group_term_list, group_name_li
 	files <- file.path(samples$folder, paste0(samples$run, ".genes.results"))
 	names(files) <- samples$run
 	txi.rsem <- tximport(files, type = "rsem", reader = read_tsv, countsFromAbundance="lengthScaledTPM")
+	saveRDS(txi.rsem,file="txi_rsem.RDS")
 	cts1 <- txi.rsem$counts
 	print('original count diminsion:')
 	print(dim(cts1))
