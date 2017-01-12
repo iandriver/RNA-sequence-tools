@@ -2,13 +2,24 @@ import subprocess
 import os
 import fnmatch
 import pandas as pd
+import sys
+
+py3 = sys.version_info[0] > 2 #creates boolean value for test that Python major version > 2
 
 
 result_file_names = ['09142015']
 path_to_file = '/Volumes/Drobo/Seq_data'
 pats = []
 new_filename = 'Renamed_ips17_Bu3'
-os.mkdir(os.path.join(path_to_file,new_filename))
+try:
+    os.mkdir(os.path.join(path_to_file,new_filename))
+except FileExistsError:
+    if py3:
+      response = input("New file already exists. Do you still want to continue (Y/N): ")
+    else:
+      response = raw_input("New file already exists. Do you still want to continue (Y/N): ")
+    if response != 'Y':
+        sys.exit("Canceled, please rerun with different new_filename.")
 
 
 barcode_map1 = pd.read_csv('/Volumes/Seq_data/v2-barcodes.txt', sep='\t', header = None, names = ['name', 'code'])
@@ -55,6 +66,7 @@ for p in pats:
                     print(code_lookup, 'file:',root, 'BarcodeError')
                     skip = True
                 if not skip:
+                    print(code_lookup, 'present')
                     name = cell_name+'_'+sindex+nindex
 
                     #uncomment when you actually want to move
