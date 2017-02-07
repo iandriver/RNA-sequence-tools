@@ -4,7 +4,7 @@ from sklearn.covariance import GraphLasso
 from sklearn.decomposition import PCA as skPCA
 import pandas as pd
 import matplotlib
-matplotlib.use("TkAgg")
+
 from sklearn.preprocessing import scale
 import community
 import matplotlib.pyplot as plt
@@ -43,6 +43,8 @@ def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circ
     #				D.add_edge( i, j, weight = matrix[i,j])
     weights = [ D[x][y]['weight'] for x,y in D.edges() ]
 
+    elarge=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] >0.2]
+    esmall=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] <=0.2]
     #weights = weights/np.max( np.abs( weights ) )
     cmap = plt.get_cmap( "Reds" ) #or some other one
 
@@ -54,15 +56,19 @@ def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circ
     	pos = nx.spring_layout( D ,scale = scale, iterations = 35 )
     #bweights = [ 1+100*(x-min(weights))/( max(weights)- min(weights) ) for x in weights ]
     bweights = [ 'k'*(z<0) + 'r'*(z>0) for z in weights ]
-    width = [ weight(w) for w in weights]
-    nx.draw_networkx_edges( D, pos, ax = ax,edge_vmin=-0.2, edge_vmax=4, edge_cmap=cmap, edge_color = width, width=width)
+    width_small = [ weight(w) for w in weights if w < 0.2]
+    width_large = [ weight(w) for w in weights if w >= 0.2]
+    nx.draw_networkx_edges(D,pos,edgelist=elarge,
+                    edge_color= "red", width=width_large, )
+    nx.draw_networkx_edges(D,pos,edgelist=esmall,width=width_small,alpha=0.5,edgedge_color="blue",style='dashed')
+
     nx.draw_networkx_nodes( D, pos, ax=ax, node_size = 0, node_color="red")
     nx.draw_networkx_labels( D, pos,font_size=15, labels = labels, ax = ax)
     plt.axis("off")
     plt.title(title)
     plt.savefig( filename, bbox_inches="tight")
 
-path_to_file = '/Volumes/Drobo/Seq_data/Macs_pr8_x31_saline_sham_d7/monocle2_assay_data_expression_matrix_nojunk.txt'
+path_to_file = '/Users/iandriver/Downloads/monocle2_5state_groups_all_genes_nocc_scicast_analysis/count_matrix_after_filtering.txt'
 
 
 #load file gene
@@ -79,7 +85,7 @@ df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
 log2_df_cell = np.log2(df_by_cell1+1)
 alpha=0.4
 
-top_pca_matrix, top_pca_genes = return_top_pca_gene(log2_df_cell,user_num_genes=80)
+top_pca_matrix, top_pca_genes = return_top_pca_gene(log2_df_cell,user_num_genes=100)
 gl = covariance.GraphLassoCV()
 gene_data = scale(top_pca_matrix.as_matrix())
 
@@ -170,7 +176,7 @@ plt.xlim(embedding[0].min() - .15 * embedding[0].ptp(),
 plt.ylim(embedding[1].min() - .03 * embedding[1].ptp(),
          embedding[1].max() + .03 * embedding[1].ptp())
 
-plt.savefig('linedraw_graph.pdf',bbox_inches="tight")
+plt.savefig(os.path.join(os.path.dirname(path_to_file),'linedraw_graph.pdf'),bbox_inches="tight")
 
 def community_cluster(cov_sp, symbols):
 	G = nx.Graph( cov_sp )
@@ -190,7 +196,7 @@ def affinity_cluster( cov_sp, symbols):
 		print("Community: ",i)
 		members = [ symbols[node] for node in np.nonzero( labels == i)[0]]
 		print(members)
-community_cluster(gl.covariance_, top_pca_genes)
+#community_cluster(gl.covariance_, top_pca_genes)
 affinity_cluster(gl.covariance_, top_pca_genes)
 save_network_graph( -prec_sp + np.diag( np.diagonal( prec_sp) ), names, os.path.join(os.path.dirname(path_to_file),"LargeNetworkNo_SP.pdf"), title="spring_sp_prec_test",layout="spring", scale= 10, weight = lambda x: abs(5*x)**(2.5) )
 save_network_graph( gl.covariance_, names, os.path.join(os.path.dirname(path_to_file),"cov_diagram.pdf"), title="cov_test", scale = 8, layout = "spring" )
