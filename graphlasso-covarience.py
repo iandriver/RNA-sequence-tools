@@ -12,6 +12,7 @@ import os
 import networkx as nx
 from sklearn import cluster, covariance, manifold
 from matplotlib import collections
+import seaborn as sns
 
 
 def return_top_pca_gene(by_cell_matrix, user_num_genes = None):
@@ -42,9 +43,10 @@ def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circ
     #			if matrix[i,j] != 0:
     #				D.add_edge( i, j, weight = matrix[i,j])
     weights = [ D[x][y]['weight'] for x,y in D.edges() ]
-
-    elarge=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] >0.2]
-    esmall=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] <=0.2]
+    large_cutoff = np.mean(weights) + np.std(weights)
+    small_cutoff = np.mean(weights) - np.std(weights)
+    elarge=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] >large_cutoff]
+    esmall=[(u,v) for (u,v,d) in D.edges(data=True) if d['weight'] <=small_cutoff]
     #weights = weights/np.max( np.abs( weights ) )
     cmap = plt.get_cmap( "Reds" ) #or some other one
 
@@ -56,19 +58,19 @@ def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circ
     	pos = nx.spring_layout( D ,scale = scale, iterations = 35 )
     #bweights = [ 1+100*(x-min(weights))/( max(weights)- min(weights) ) for x in weights ]
     bweights = [ 'k'*(z<0) + 'r'*(z>0) for z in weights ]
-    width_small = [ weight(w) for w in weights if w < 0.2]
-    width_large = [ weight(w) for w in weights if w >= 0.2]
+    width_small = [ weight(w) for w in weights if w <= small_cutoff]
+    width_large = [ weight(w) for w in weights if w > large_cutoff]
     nx.draw_networkx_edges(D,pos,edgelist=elarge,
                     edge_color= "red", width=width_large, )
-    nx.draw_networkx_edges(D,pos,edgelist=esmall,width=width_small,alpha=0.5,edgedge_color="blue",style='dashed')
+    nx.draw_networkx_edges(D,pos,edgelist=esmall,width=width_small,alpha=0.5,edge_color="blue",style='dashed')
 
-    nx.draw_networkx_nodes( D, pos, ax=ax, node_size = 0, node_color="red")
-    nx.draw_networkx_labels( D, pos,font_size=15, labels = labels, ax = ax)
+    nx.draw_networkx_nodes( D, pos, ax=ax, node_size = 1, node_color="black")
+    nx.draw_networkx_labels( D, pos,font_size=18, labels = labels, ax = ax)
     plt.axis("off")
     plt.title(title)
     plt.savefig( filename, bbox_inches="tight")
 
-path_to_file = '/Users/iandriver/Downloads/monocle2_5state_groups_all_genes_nocc_scicast_analysis/count_matrix_after_filtering.txt'
+path_to_file = '/Volumes/Drobo/Seq_data/Macs_pr8_x31_saline_sham_d7/monocle2_assay_data_expression_matrix_nojunk.txt'
 
 
 #load file gene
