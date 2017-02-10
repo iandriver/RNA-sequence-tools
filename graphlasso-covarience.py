@@ -33,7 +33,7 @@ def return_top_pca_gene(by_cell_matrix, user_num_genes = None):
     new_cell_matrix = by_cell_matrix.ix[top_pca_list[0:num_genes],:]
     return new_cell_matrix.transpose(), top_pca_list[0:num_genes]
 
-def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circular", weight = lambda x: abs(4*x)**(2.5) ):
+def save_network_graph( matrix, labels, filename, title, scale=8, node_weight = None, layout = "circular", weight = lambda x: abs(4*x)**(2.5)):
     labels = dict( zip( range( len(labels) ), labels) )
     d = matrix.shape[0]
     D = nx.Graph(matrix)
@@ -61,16 +61,18 @@ def save_network_graph( matrix, labels, filename, title, scale=8, layout = "circ
     width_small = [ weight(w) for w in weights if w <= small_cutoff]
     width_large = [ weight(w) for w in weights if w > large_cutoff]
     nx.draw_networkx_edges(D,pos,edgelist=elarge,
-                    edge_color= "red", width=width_large, )
-    nx.draw_networkx_edges(D,pos,edgelist=esmall,width=width_small,alpha=0.5,edge_color="blue",style='dashed')
-
-    nx.draw_networkx_nodes( D, pos, ax=ax, node_size = 1, node_color="black")
+                    edge_color= "green", width=width_large, )
+    nx.draw_networkx_edges(D,pos,edgelist=esmall,width=width_small,alpha=0.5,edge_color="red",style='dashed')
+    if node_weight == None:
+        nx.draw_networkx_nodes( D, pos, ax=ax, node_size = 1, node_color="black")
+    else:
+        nx.draw_networkx_nodes( D, pos, ax=ax, node_size = node_weight, node_color="black", alpha=0.4)
     nx.draw_networkx_labels( D, pos,font_size=18, labels = labels, ax = ax)
     plt.axis("off")
     plt.title(title)
     plt.savefig( filename, bbox_inches="tight")
 
-path_to_file = '/Volumes/Drobo/Seq_data/Macs_pr8_x31_saline_sham_d7/monocle2_assay_data_expression_matrix_nojunk.txt'
+path_to_file = '/Users/iandriver/Downloads/pdgfra_gli_normalized_edgeR_counts_TMM_all_noGM_filtered.txt'
 
 
 #load file gene
@@ -88,11 +90,17 @@ log2_df_cell = np.log2(df_by_cell1+1)
 alpha=0.4
 
 top_pca_matrix, top_pca_genes = return_top_pca_gene(log2_df_cell,user_num_genes=100)
+mean_expr_dict = {}
+for g in top_pca_genes:
+    g_expr = top_pca_matrix[g]
+    mean_expr_dict[g] = np.mean(g_expr)
+node_weights =[int(500*round(v)) for k,v in mean_expr_dict.items()]
 gl = covariance.GraphLassoCV()
 gene_data = scale(top_pca_matrix.as_matrix())
 
 gl.fit(gene_data)
 _, labels = cluster.affinity_propagation(gl.covariance_)
+print(labels)
 n_labels = labels.max()
 names = np.array(top_pca_genes)
 prec_sp = gl.precision_
@@ -200,6 +208,6 @@ def affinity_cluster( cov_sp, symbols):
 		print(members)
 #community_cluster(gl.covariance_, top_pca_genes)
 affinity_cluster(gl.covariance_, top_pca_genes)
-save_network_graph( -prec_sp + np.diag( np.diagonal( prec_sp) ), names, os.path.join(os.path.dirname(path_to_file),"LargeNetworkNo_SP.pdf"), title="spring_sp_prec_test",layout="spring", scale= 10, weight = lambda x: abs(5*x)**(2.5) )
-save_network_graph( gl.covariance_, names, os.path.join(os.path.dirname(path_to_file),"cov_diagram.pdf"), title="cov_test", scale = 8, layout = "spring" )
-save_network_graph( gl.precision_, names, os.path.join(os.path.dirname(path_to_file),"precision.pdf") , title="Precision Matrix Network", layout="spring")
+save_network_graph( -prec_sp + np.diag( np.diagonal( prec_sp) ), names, os.path.join(os.path.dirname(path_to_file),"LargeNetworkNo_SP.pdf"), title="spring_sp_prec_test",layout="spring", scale= 10, node_weight=node_weights, weight = lambda x: abs(5*x)**(2.5))
+save_network_graph( gl.covariance_, names, os.path.join(os.path.dirname(path_to_file),"cov_diagram.pdf"), node_weight=node_weights, title="cov_test", scale = 8, layout = "spring" )
+save_network_graph( gl.precision_, names, os.path.join(os.path.dirname(path_to_file),"precision.pdf") , title="Precision Matrix Network", layout="spring", node_weight= node_weights)
