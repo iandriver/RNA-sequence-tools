@@ -4,7 +4,7 @@ from sklearn.covariance import GraphLasso
 from sklearn.decomposition import PCA as skPCA
 import pandas as pd
 import matplotlib
-
+import itertools
 from sklearn.preprocessing import scale
 import community
 import matplotlib.pyplot as plt
@@ -15,33 +15,30 @@ from matplotlib import collections
 import seaborn as sns
 
 
-def return_top_pca_gene(by_cell_matrix, user_num_genes = None):
+def return_top_pca_gene(by_cell_matrix, range_genes = None):
     gene_number = 100
     gene_pca = skPCA(n_components=3)
     np_by_gene = np.asarray(by_cell_matrix.transpose())
     gene_index = by_cell_matrix.index.tolist()
 
-    if user_num_genes is not None:
-        num_genes = user_num_genes
+    if range_genes is not None:
+        start_num= range_genes[0]
+        end_num_genes = range_genes[1]
     else:
-        num_genes = min(gene_number, len(gene_index))
+        start_num = 0
+        end_num_genes = min(gene_number, len(gene_index))
     by_gene_trans = gene_pca.fit_transform(np_by_gene)
     Pc_df = pd.DataFrame(gene_pca.components_.T, columns=['PC-1', 'PC-2', 'PC-3'], index=gene_index)
     pca_rank_df = Pc_df.abs().sum(axis=1)
     Pc_sort_df = pca_rank_df.nlargest(len(gene_index))
     top_pca_list = Pc_sort_df.index.tolist()
-    new_cell_matrix = by_cell_matrix.ix[top_pca_list[0:num_genes],:]
-    return new_cell_matrix.transpose(), top_pca_list[0:num_genes]
+    new_cell_matrix = by_cell_matrix.ix[top_pca_list[start_num:end_num_genes],:]
+    return new_cell_matrix.transpose(), top_pca_list[start_num:end_num_genes]
 
 def save_network_graph( matrix, labels, filename, title, scale=8, node_weight = None, layout = "circular", weight = lambda x: abs(4*x)**(2.5)):
     labels = dict( zip( range( len(labels) ), labels) )
     d = matrix.shape[0]
     D = nx.Graph(matrix)
-    #D.add_nodes_from( range(d) )
-    #for i in range(d):
-    #	for j in range(i):
-    #			if matrix[i,j] != 0:
-    #				D.add_edge( i, j, weight = matrix[i,j])
     weights = [ D[x][y]['weight'] for x,y in D.edges() ]
     large_cutoff = np.mean(weights) + np.std(weights)
     small_cutoff = np.mean(weights) - np.std(weights)
@@ -56,7 +53,7 @@ def save_network_graph( matrix, labels, filename, title, scale=8, node_weight = 
     	pos = nx.circular_layout( D, scale =scale )
     elif layout == "spring":
     	pos = nx.spring_layout( D ,scale = scale, iterations = 35 )
-    #bweights = [ 1+100*(x-min(weights))/( max(weights)- min(weights) ) for x in weights ]
+
     bweights = [ 'k'*(z<0) + 'r'*(z>0) for z in weights ]
     width_small = [ weight(w) for w in weights if w <= small_cutoff]
     width_large = [ weight(w) for w in weights if w > large_cutoff]
@@ -72,7 +69,7 @@ def save_network_graph( matrix, labels, filename, title, scale=8, node_weight = 
     plt.title(title)
     plt.savefig( filename, bbox_inches="tight")
 
-path_to_file = '/Users/iandriver/Downloads/pdgfra_gli_normalized_edgeR_counts_TMM_all_noGM_filtered.txt'
+path_to_file = '/Users/iandriver/Downloads/monocle2_5state_groups_all_genes_nocc_scicast_analysis/count_matrix_after_filtering.txt'
 
 
 #load file gene
@@ -88,28 +85,70 @@ df_by_gene1 = pd.DataFrame(by_gene, columns=gene_list, index=cell_list)
 df_by_cell1 = pd.DataFrame(by_cell, columns=cell_list, index=gene_list)
 log2_df_cell = np.log2(df_by_cell1+1)
 alpha=0.4
+keep_genes = []
+num_iterations = 3
+gene_index_list = list(range(0,((num_iterations+1)*100), 100))
 
-top_pca_matrix, top_pca_genes = return_top_pca_gene(log2_df_cell,user_num_genes=100)
+for iter_genes in range(0,num_iterations):
+    top_pca_matrix, top_pca_genes = return_top_pca_gene(log2_df_cell,range_genes=[gene_index_list[max(0,iter_genes-1)],gene_index_list[iter_genes+1]])
+    mean_expr_dict = {}
+
+    gl = covariance.GraphLassoCV()
+    gene_data = scale(top_pca_matrix.as_matrix())
+
+    gl.fit(gene_data)
+    _, labels = cluster.affinity_propagation(gl.covariance_)
+
+    n_labels = labels.max()
+    names = np.array(top_pca_genes)
+    prec_sp = gl.precision_
+    matrix1 = -prec_sp + np.diag( np.diagonal( prec_sp) )
+    D = nx.Graph(matrix1)
+
+    gene_weights_dict ={}
+    for n in names:
+        gene_weights_dict[n] = 0
+    for x,y in D.edges():
+        gene1 = names[x]
+        gene2 = names[y]
+        abs_weight = abs(D[x][y]['weight'])
+        gene_weights_dict[gene1] += abs_weight
+        gene_weights_dict[gene2] += abs_weight
+
+    clust_gene_list = []
+    avg_wieght_list = []
+    for i in range(n_labels + 1):
+        clust_id = "cluster_"+str(i+1)
+        w_list = [gene_weights_dict[g] for g in names[labels == i]]
+        clust_gene_list.append([names[labels == i]])
+        avg_wieght_list.append(sum(w_list)/len(w_list))
+        print('Cluster %i: %s' % ((i + 1), ', '.join(names[labels == i])))
+    if iter_genes == 0:
+        threshold = np.mean(avg_wieght_list)-np.std(avg_wieght_list)
+
+    for g_list in [clust_gene_list[i] for i,av in enumerate(avg_wieght_list) if av >= threshold]:
+        keep_genes.append(np.ravel(g_list))
+
+
+final_gene_list = list(set([item for sublist in keep_genes for item in sublist]))
+print(final_gene_list)
+gene_matrix_log2 = log2_df_cell.T
+top_matrix = gene_matrix_log2[final_gene_list]
 mean_expr_dict = {}
-for g in top_pca_genes:
-    g_expr = top_pca_matrix[g]
+for g in final_gene_list:
+    g_expr = top_matrix[g]
     mean_expr_dict[g] = np.mean(g_expr)
+
 node_weights =[int(500*round(v)) for k,v in mean_expr_dict.items()]
 gl = covariance.GraphLassoCV()
-gene_data = scale(top_pca_matrix.as_matrix())
+gene_data = scale(top_matrix.as_matrix())
 
 gl.fit(gene_data)
 _, labels = cluster.affinity_propagation(gl.covariance_)
-print(labels)
 n_labels = labels.max()
-names = np.array(top_pca_genes)
+names = np.array(final_gene_list)
+
 prec_sp = gl.precision_
-
-
-for i in range(n_labels + 1):
-    print('Cluster %i: %s' % ((i + 1), ', '.join(names[labels == i])))
-
-
 
 node_position_model = manifold.LocallyLinearEmbedding(
     n_components=2, eigen_solver='dense', n_neighbors=7)
@@ -178,7 +217,7 @@ for index, (name, label, (x, y)) in enumerate(
              horizontalalignment=horizontalalignment,
              verticalalignment=verticalalignment,
              bbox=dict(facecolor='w',
-                       edgecolor=plt.cm.spectral(label / float(n_labels)),
+                       edgecolor=plt.cm.nipy_spectral(label / float(n_labels)),
                        alpha=.6))
 
 plt.xlim(embedding[0].min() - .15 * embedding[0].ptp(),
@@ -207,7 +246,7 @@ def affinity_cluster( cov_sp, symbols):
 		members = [ symbols[node] for node in np.nonzero( labels == i)[0]]
 		print(members)
 #community_cluster(gl.covariance_, top_pca_genes)
-affinity_cluster(gl.covariance_, top_pca_genes)
+#affinity_cluster(gl.covariance_, final_gene_list)
 save_network_graph( -prec_sp + np.diag( np.diagonal( prec_sp) ), names, os.path.join(os.path.dirname(path_to_file),"LargeNetworkNo_SP.pdf"), title="spring_sp_prec_test",layout="spring", scale= 10, node_weight=node_weights, weight = lambda x: abs(5*x)**(2.5))
 save_network_graph( gl.covariance_, names, os.path.join(os.path.dirname(path_to_file),"cov_diagram.pdf"), node_weight=node_weights, title="cov_test", scale = 8, layout = "spring" )
 save_network_graph( gl.precision_, names, os.path.join(os.path.dirname(path_to_file),"precision.pdf") , title="Precision Matrix Network", layout="spring", node_weight= node_weights)
