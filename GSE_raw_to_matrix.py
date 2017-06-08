@@ -73,6 +73,8 @@ def merge_datasets(list_of_paths):
         print(path_to_file, merge_df1.shape)
 
     cell_data_df = pd.DataFrame.from_dict(cell_data_dict,orient='index')
+    cell_data_df.rename(columns={0:'SourceID'}, inplace=True)
+    df.index.name = 'SampleID'
     merge_df1.fillna(value=0, inplace=True)
     try:
         merge_df1_to_save = merge_df1.astype(np.float64)
